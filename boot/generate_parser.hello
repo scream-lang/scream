@@ -1,0 +1,13 @@
+local generator = require 'boot.parsing.ll1_grammar'
+local argparse = require 'argparse'
+
+local function main(arg)
+    local parser = argparse("script", "An example.")
+    parser:argument("input", "Input file.", "boot/hello/grammar.yhello")
+    parser:option("-d --dump"):args "?"
+    local args = parser:parse()
+
+    return generator(args.input)
+end
+
+main(arg)
