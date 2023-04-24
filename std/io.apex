@@ -1,4 +1,4 @@
-local common = require 'hello.common'
+local common = require 'apex.common'
 
 local hio = setmetatable({
 	readFile   = common.readFile,
@@ -39,4 +39,4 @@ function hio.eprintf(format, ...)
 	hio.fprintf(io.stderr, format, ...)
 end
 
-return hio
+return io
