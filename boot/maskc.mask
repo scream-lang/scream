@@ -1,6 +1,5 @@
--- Compiles and loads a piece of Hello code
-local parser = require 'boot.hello.parser'
-local compiler = require 'boot.hello.compiler'
+local parser = require 'boot.mask.parser'
+local compiler = require 'boot.mask.compiler'
 local dump = require 'boot.bytecode.dump'
 local utils = require 'boot.common.utils'
 
@@ -46,7 +45,7 @@ local function main(file)
 end
 
 
-local helloc = {}
-helloc.compile = compile
-helloc.helloc = main
+local maskc = {}
+maskc.compile = compile
+maskc.maskc = main
 return helloc

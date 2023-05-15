@@ -1,4 +1,4 @@
-local helloc = require 'boot.helloc'
+local maskc = require 'boot.maskc'
 local argparse = require 'argparse'
 
 function main(arg)
@@ -13,7 +13,7 @@ function main(arg)
         code = io.open(args.input, 'r'):read('*all')
     end
     local args = parser:parse()
-    local func, bytecode, prototype, dumper = helloc.compile(code)
+    local func, bytecode, prototype, dumper = maskc.compile(code)
     if args.dump then
         dumper(prototype)
         print("--- END OF DUMP ---")
