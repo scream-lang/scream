@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: lobject.h $
-** Type definitions for Hello objects
-** See Copyright Notice in hello.h
+** Type definitions for Mask objects
+** See Copyright Notice in mask.h
 */
 
 #include <stdarg.h>
@@ -10,27 +10,27 @@
 
 
 #include "llimits.h"
-#include "hello.h"
+#include "mask.h"
 
 
 /*
 ** Extra types for collectable non-values
 */
-#define HELLO_TUPVAL	HELLO_NUMTYPES  /* upvalues */
-#define HELLO_TPROTO	(HELLO_NUMTYPES+1)  /* function prototypes */
-#define HELLO_TDEADKEY	(HELLO_NUMTYPES+2)  /* removed keys in tables */
-#define HELLO_TITER  (HELLO_NUMTYPES+3) /* Iterator marker */
+#define MASK_TUPVAL	MASK_NUMTYPES  /* upvalues */
+#define MASK_TPROTO	(MASK_NUMTYPES+1)  /* function prototypes */
+#define MASK_TDEADKEY	(MASK_NUMTYPES+2)  /* removed keys in tables */
+#define MASK_TITER  (MASK_NUMTYPES+3) /* Iterator marker */
 
 
 /*
-** number of all possible types (including HELLO_TNONE but excluding DEADKEY)
+** number of all possible types (including MASK_TNONE but excluding DEADKEY)
 */
-#define HELLO_TOTALTYPES		(HELLO_TPROTO + 2)
+#define MASK_TOTALTYPES		(MASK_TPROTO + 2)
 
 
 /*
 ** tags for Tagged Values have the following use of bits:
-** bits 0-3: actual tag (a HELLO_T* constant)
+** bits 0-3: actual tag (a MASK_T* constant)
 ** bits 4-5: variant bits
 ** bit 6: whether value is collectable
 */
@@ -41,20 +41,20 @@
 
 
 /*
-** Union of all Hello values
+** Union of all Mask values
 */
 typedef union Value {
   struct GCObject *gc;    /* collectable objects */
   void *p;         /* light userdata */
-  hello_CFunction f; /* light C functions */
-  hello_Integer i;   /* integer numbers */
-  hello_Number n;    /* float numbers */
+  mask_CFunction f; /* light C functions */
+  mask_Integer i;   /* integer numbers */
+  mask_Number n;    /* float numbers */
   unsigned int it; /* iterator index */
 } Value;
 
 
 /*
-** Tagged Values. This is the basic representation of values in Hello:
+** Tagged Values. This is the basic representation of values in Mask:
 ** an actual value plus a tag with its type.
 */
 
@@ -100,7 +100,7 @@ typedef struct TValue {
 ** macros using this one to be used where L is not available.
 */
 #define checkliveness(L,obj) \
-    ((void)L, hello_longassert(!iscollectable(obj) || \
+    ((void)L, mask_longassert(!iscollectable(obj) || \
         (righttt(obj) && (L == NULL || !isdead(G(L),gcvalue(obj))))))
 
 
@@ -114,7 +114,7 @@ typedef struct TValue {
 #define setobj(L,obj1,obj2) \
     { TValue *io1=(obj1); const TValue *io2=(obj2); \
           io1->value_ = io2->value_; settt_(io1, io2->tt_); \
-      checkliveness(L,io1); hello_assert(!isnonstrictnil(io1)); }
+      checkliveness(L,io1); mask_assert(!isnonstrictnil(io1)); }
 
 /*
 ** Different types of assignments, according to source and destination.
@@ -134,7 +134,7 @@ typedef struct TValue {
 
 
 /*
-** Entries in a Hello stack. Field 'tbclist' forms a list of all
+** Entries in a Mask stack. Field 'tbclist' forms a list of all
 ** to-be-closed variables active in this stack. Dummy entries are
 ** used when the distance between two tbc variables does not fit
 ** in an unsigned short. They are represented by delta==0, and
@@ -165,27 +165,27 @@ typedef StackValue *StkId;
 */
 
 /* Standard nil */
-#define HELLO_VNIL	makevariant(HELLO_TNIL, 0)
+#define MASK_VNIL	makevariant(MASK_TNIL, 0)
 
 /* Empty slot (which might be different from a slot containing nil) */
-#define HELLO_VEMPTY	makevariant(HELLO_TNIL, 1)
+#define MASK_VEMPTY	makevariant(MASK_TNIL, 1)
 
 /* Value returned for a key not found in a table (absent key) */
-#define HELLO_VABSTKEY	makevariant(HELLO_TNIL, 2)
+#define MASK_VABSTKEY	makevariant(MASK_TNIL, 2)
 
 
 /* macro to test for (any kind of) nil */
-#define ttisnil(v)		checktype((v), HELLO_TNIL)
+#define ttisnil(v)		checktype((v), MASK_TNIL)
 
 
 /* macro to test for a standard nil */
-#define ttisstrictnil(o)	checktag((o), HELLO_VNIL)
+#define ttisstrictnil(o)	checktag((o), MASK_VNIL)
 
 
-#define setnilvalue(obj) settt_(obj, HELLO_VNIL)
+#define setnilvalue(obj) settt_(obj, MASK_VNIL)
 
 
-#define isabstkey(v)		checktag((v), HELLO_VABSTKEY)
+#define isabstkey(v)		checktag((v), MASK_VABSTKEY)
 
 
 /*
@@ -203,11 +203,11 @@ typedef StackValue *StkId;
 
 
 /* macro defining a value corresponding to an absent key */
-#define ABSTKEYCONSTANT		{NULL}, HELLO_VABSTKEY
+#define ABSTKEYCONSTANT		{NULL}, MASK_VABSTKEY
 
 
 /* mark an entry as empty */
-#define setempty(v)		settt_(v, HELLO_VEMPTY)
+#define setempty(v)		settt_(v, MASK_VEMPTY)
 
 
 
@@ -221,19 +221,19 @@ typedef StackValue *StkId;
 */
 
 
-#define HELLO_VFALSE	makevariant(HELLO_TBOOLEAN, 0)
-#define HELLO_VTRUE	makevariant(HELLO_TBOOLEAN, 1)
+#define MASK_VFALSE	makevariant(MASK_TBOOLEAN, 0)
+#define MASK_VTRUE	makevariant(MASK_TBOOLEAN, 1)
 
-#define ttisboolean(o)		checktype((o), HELLO_TBOOLEAN)
-#define ttisfalse(o)		checktag((o), HELLO_VFALSE)
-#define ttistrue(o)		checktag((o), HELLO_VTRUE)
+#define ttisboolean(o)		checktype((o), MASK_TBOOLEAN)
+#define ttisfalse(o)		checktag((o), MASK_VFALSE)
+#define ttistrue(o)		checktag((o), MASK_VTRUE)
 
 
 #define l_isfalse(o)	(ttisfalse(o) || ttisnil(o))
 
 
-#define setbfvalue(obj)		settt_(obj, HELLO_VFALSE)
-#define setbtvalue(obj)		settt_(obj, HELLO_VTRUE)
+#define setbfvalue(obj)		settt_(obj, MASK_VFALSE)
+#define setbtvalue(obj)		settt_(obj, MASK_VTRUE)
 
 /* }================================================================== */
 
@@ -244,15 +244,15 @@ typedef StackValue *StkId;
 ** ===================================================================
 */
 
-#define HELLO_VTHREAD		makevariant(HELLO_TTHREAD, 0)
+#define MASK_VTHREAD		makevariant(MASK_TTHREAD, 0)
 
-#define ttisthread(o)		checktag((o), ctb(HELLO_VTHREAD))
+#define ttisthread(o)		checktag((o), ctb(MASK_VTHREAD))
 
 #define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
 
 #define setthvalue(L,obj,x) \
-  { TValue *io = (obj); hello_State *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(HELLO_VTHREAD)); \
+  { TValue *io = (obj); mask_State *x_ = (x); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(MASK_VTHREAD)); \
     checkliveness(L,io); }
 
 #define setthvalue2s(L,o,t)	setthvalue(L,s2v(o),t)
@@ -305,12 +305,12 @@ typedef struct GCObject {
 */
 
 /* Variant tags for numbers */
-#define HELLO_VNUMINT	makevariant(HELLO_TNUMBER, 0)  /* integer numbers */
-#define HELLO_VNUMFLT	makevariant(HELLO_TNUMBER, 1)  /* float numbers */
+#define MASK_VNUMINT	makevariant(MASK_TNUMBER, 0)  /* integer numbers */
+#define MASK_VNUMFLT	makevariant(MASK_TNUMBER, 1)  /* float numbers */
 
-#define ttisnumber(o)		checktype((o), HELLO_TNUMBER)
-#define ttisfloat(o)		checktag((o), HELLO_VNUMFLT)
-#define ttisinteger(o)		checktag((o), HELLO_VNUMINT)
+#define ttisnumber(o)		checktype((o), MASK_TNUMBER)
+#define ttisfloat(o)		checktag((o), MASK_VNUMFLT)
+#define ttisinteger(o)		checktag((o), MASK_VNUMINT)
 
 #define nvalue(o)	check_exp(ttisnumber(o), \
     (ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
@@ -321,16 +321,16 @@ typedef struct GCObject {
 #define ivalueraw(v)	((v).i)
 
 #define setfltvalue(obj,x) \
-  { TValue *io=(obj); val_(io).n=(x); settt_(io, HELLO_VNUMFLT); }
+  { TValue *io=(obj); val_(io).n=(x); settt_(io, MASK_VNUMFLT); }
 
 #define chgfltvalue(obj,x) \
-  { TValue *io=(obj); hello_assert(ttisfloat(io)); val_(io).n=(x); }
+  { TValue *io=(obj); mask_assert(ttisfloat(io)); val_(io).n=(x); }
 
 #define setivalue(obj,x) \
-  { TValue *io=(obj); val_(io).i=(x); settt_(io, HELLO_VNUMINT); }
+  { TValue *io=(obj); val_(io).i=(x); settt_(io, MASK_VNUMINT); }
 
 #define chgivalue(obj,x) \
-  { TValue *io=(obj); hello_assert(ttisinteger(io)); val_(io).i=(x); }
+  { TValue *io=(obj); mask_assert(ttisinteger(io)); val_(io).i=(x); }
 
 /* }================================================================== */
 
@@ -342,12 +342,12 @@ typedef struct GCObject {
 */
 
 /* Variant tags for strings */
-#define HELLO_VSHRSTR	makevariant(HELLO_TSTRING, 0)  /* short strings */
-#define HELLO_VLNGSTR	makevariant(HELLO_TSTRING, 1)  /* long strings */
+#define MASK_VSHRSTR	makevariant(MASK_TSTRING, 0)  /* short strings */
+#define MASK_VLNGSTR	makevariant(MASK_TSTRING, 1)  /* long strings */
 
-#define ttisstring(o)		checktype((o), HELLO_TSTRING)
-#define ttisshrstring(o)	checktag((o), ctb(HELLO_VSHRSTR))
-#define ttislngstring(o)	checktag((o), ctb(HELLO_VLNGSTR))
+#define ttisstring(o)		checktype((o), MASK_TSTRING)
+#define ttisshrstring(o)	checktag((o), ctb(MASK_VSHRSTR))
+#define ttislngstring(o)	checktag((o), ctb(MASK_VLNGSTR))
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
@@ -380,7 +380,7 @@ struct TString {
   char contents[1];
 
   [[nodiscard]] bool isShort() const noexcept {
-    return tt == HELLO_VSHRSTR;
+    return tt == MASK_VSHRSTR;
   }
 
   [[nodiscard]] size_t size() const noexcept {
@@ -400,11 +400,11 @@ struct TString {
 #define getstr(ts)  ((ts)->contents)
 
 
-/* get the actual string (array of bytes) from a Hello value */
+/* get the actual string (array of bytes) from a Mask value */
 #define svalue(o)       getstr(tsvalue(o))
 
 /* get string length from 'TString *s' */
-#define tsslen(s)	((s)->tt == HELLO_VSHRSTR ? (s)->shrlen : (s)->u.lnglen)
+#define tsslen(s)	((s)->tt == MASK_VSHRSTR ? (s)->shrlen : (s)->u.lnglen)
 
 /* get string length from 'TValue *o' */
 #define vslen(o)	tsslen(tsvalue(o))
@@ -423,12 +423,12 @@ struct TString {
 ** Light userdata should be a variant of userdata, but for compatibility
 ** reasons they are also different types.
 */
-#define HELLO_VLIGHTUSERDATA	makevariant(HELLO_TLIGHTUSERDATA, 0)
+#define MASK_VLIGHTUSERDATA	makevariant(MASK_TLIGHTUSERDATA, 0)
 
-#define HELLO_VUSERDATA		makevariant(HELLO_TUSERDATA, 0)
+#define MASK_VUSERDATA		makevariant(MASK_TUSERDATA, 0)
 
-#define ttislightuserdata(o)	checktag((o), HELLO_VLIGHTUSERDATA)
-#define ttisfulluserdata(o)	checktag((o), ctb(HELLO_VUSERDATA))
+#define ttislightuserdata(o)	checktag((o), MASK_VLIGHTUSERDATA)
+#define ttisfulluserdata(o)	checktag((o), ctb(MASK_VUSERDATA))
 
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
@@ -436,18 +436,18 @@ struct TString {
 #define pvalueraw(v)	((v).p)
 
 #define setpvalue(obj,x) \
-  { TValue *io=(obj); val_(io).p=(x); settt_(io, HELLO_VLIGHTUSERDATA); }
+  { TValue *io=(obj); val_(io).p=(x); settt_(io, MASK_VLIGHTUSERDATA); }
 
 #define setuvalue(L,obj,x) \
   { TValue *io = (obj); Udata *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(HELLO_VUSERDATA)); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(MASK_VUSERDATA)); \
     checkliveness(L,io); }
 
 
 /* Ensures that addresses after this type are always fully aligned. */
 typedef union UValue {
   TValue uv;
-  HELLOI_MAXALIGN;  /* ensures maximum alignment for udata bytes */
+  MASKI_MAXALIGN;  /* ensures maximum alignment for udata bytes */
 } UValue;
 
 
@@ -479,7 +479,7 @@ typedef struct Udata0 {
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
   struct Table *metatable;
-  union {HELLOI_MAXALIGN;} bindata;
+  union {MASKI_MAXALIGN;} bindata;
 } Udata0;
 
 
@@ -503,7 +503,7 @@ typedef struct Udata0 {
 ** ===================================================================
 */
 
-#define HELLO_VPROTO	makevariant(HELLO_TPROTO, 0)
+#define MASK_VPROTO	makevariant(MASK_TPROTO, 0)
 
 
 /*
@@ -532,8 +532,8 @@ typedef struct LocVar {
 ** Associates the absolute line source for a given instruction ('pc').
 ** The array 'lineinfo' gives, for each instruction, the difference in
 ** lines from the previous instruction. When that difference does not
-** fit into a byte, Hello saves the absolute line for that instruction.
-** (Hello also saves the absolute line periodically, to speed up the
+** fit into a byte, Mask saves the absolute line for that instruction.
+** (Mask also saves the absolute line periodically, to speed up the
 ** computation of a line number: we can use binary search in the
 ** absolute-line array, but we must traverse the 'lineinfo' array
 ** linearly to compute a line.)
@@ -580,18 +580,18 @@ typedef struct Proto {
 ** ===================================================================
 */
 
-#define HELLO_VUPVAL	makevariant(HELLO_TUPVAL, 0)
+#define MASK_VUPVAL	makevariant(MASK_TUPVAL, 0)
 
 
 /* Variant tags for functions */
-#define HELLO_VLCL	makevariant(HELLO_TFUNCTION, 0)  /* Hello closure */
-#define HELLO_VLCF	makevariant(HELLO_TFUNCTION, 1)  /* light C function */
-#define HELLO_VCCL	makevariant(HELLO_TFUNCTION, 2)  /* C closure */
+#define MASK_VLCL	makevariant(MASK_TFUNCTION, 0)  /* Mask closure */
+#define MASK_VLCF	makevariant(MASK_TFUNCTION, 1)  /* light C function */
+#define MASK_VCCL	makevariant(MASK_TFUNCTION, 2)  /* C closure */
 
-#define ttisfunction(o)		checktype(o, HELLO_TFUNCTION)
-#define ttisLclosure(o)		checktag((o), ctb(HELLO_VLCL))
-#define ttislcf(o)		checktag((o), HELLO_VLCF)
-#define ttisCclosure(o)		checktag((o), ctb(HELLO_VCCL))
+#define ttisfunction(o)		checktype(o, MASK_TFUNCTION)
+#define ttisLclosure(o)		checktag((o), ctb(MASK_VLCL))
+#define ttislcf(o)		checktag((o), MASK_VLCF)
+#define ttisCclosure(o)		checktag((o), ctb(MASK_VCCL))
 #define ttisclosure(o)         (ttisLclosure(o) || ttisCclosure(o))
 
 
@@ -606,22 +606,22 @@ typedef struct Proto {
 
 #define setclLvalue(L,obj,x) \
   { TValue *io = (obj); LClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(HELLO_VLCL)); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(MASK_VLCL)); \
     checkliveness(L,io); }
 
 #define setclLvalue2s(L,o,cl)	setclLvalue(L,s2v(o),cl)
 
 #define setfvalue(obj,x) \
-  { TValue *io=(obj); val_(io).f=(x); settt_(io, HELLO_VLCF); }
+  { TValue *io=(obj); val_(io).f=(x); settt_(io, MASK_VLCF); }
 
 #define setclCvalue(L,obj,x) \
   { TValue *io = (obj); CClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(HELLO_VCCL)); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(MASK_VCCL)); \
     checkliveness(L,io); }
 
 
 /*
-** Upvalues for Hello closures
+** Upvalues for Mask closures
 */
 typedef struct UpVal {
   CommonHeader;
@@ -643,7 +643,7 @@ typedef struct UpVal {
 
 typedef struct CClosure {
   ClosureHeader;
-  hello_CFunction f;
+  mask_CFunction f;
   TValue upvalue[1];  /* list of upvalues */
 } CClosure;
 
@@ -672,15 +672,15 @@ typedef union Closure {
 ** ===================================================================
 */
 
-#define HELLO_VTABLE	makevariant(HELLO_TTABLE, 0)
+#define MASK_VTABLE	makevariant(MASK_TTABLE, 0)
 
-#define ttistable(o)		checktag((o), ctb(HELLO_VTABLE))
+#define ttistable(o)		checktag((o), ctb(MASK_VTABLE))
 
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
 
 #define sethvalue(L,obj,x) \
   { TValue *io = (obj); Table *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(HELLO_VTABLE)); \
+    val_(io).gc = obj2gco(x_); settt_(io, ctb(MASK_VTABLE)); \
     checkliveness(L,io); }
 
 #define sethvalue2s(L,o,h)	sethvalue(L,s2v(o),h)
@@ -742,7 +742,7 @@ typedef struct Table {
   struct Table *metatable;
   GCObject *gclist;
   bool isfrozen;
-  hello_Unsigned length;  /* cached length of this table, as returned by helloH_getn */
+  mask_Unsigned length;  /* cached length of this table, as returned by maskH_getn */
 } Table;
 
 
@@ -752,13 +752,13 @@ typedef struct Table {
 #define keytt(node)		((node)->u.key_tt)
 #define keyval(node)		((node)->u.key_val)
 
-#define keyisnil(node)		(keytt(node) == HELLO_TNIL)
-#define keyisinteger(node)	(keytt(node) == HELLO_VNUMINT)
+#define keyisnil(node)		(keytt(node) == MASK_TNIL)
+#define keyisinteger(node)	(keytt(node) == MASK_VNUMINT)
 #define keyival(node)		(keyval(node).i)
-#define keyisshrstr(node)	(keytt(node) == ctb(HELLO_VSHRSTR))
+#define keyisshrstr(node)	(keytt(node) == ctb(MASK_VSHRSTR))
 #define keystrval(node)		(gco2ts(keyval(node).gc))
 
-#define setnilkey(node)		(keytt(node) = HELLO_TNIL)
+#define setnilkey(node)		(keytt(node) = MASK_TNIL)
 
 #define keyiscollectable(n)	(keytt(n) & BIT_ISCOLLECTABLE)
 
@@ -772,13 +772,13 @@ typedef struct Table {
 ** be found when searched in a special way. ('next' needs that to find
 ** keys removed from a table during a traversal.)
 */
-#define setdeadkey(node)	(keytt(node) = HELLO_TDEADKEY)
-#define keyisdead(node)		(keytt(node) == HELLO_TDEADKEY)
+#define setdeadkey(node)	(keytt(node) = MASK_TDEADKEY)
+#define keyisdead(node)		(keytt(node) == MASK_TDEADKEY)
 
 
 /* Value used for faster iterations */
-#define HELLO_VITER  makevariant(HELLO_TITER, 0)
-#define HELLO_VITERI  makevariant(HELLO_TITER, 1)
+#define MASK_VITER  makevariant(MASK_TITER, 0)
+#define MASK_VITERI  makevariant(MASK_TITER, 1)
 
 
 /* }================================================================== */
@@ -796,19 +796,19 @@ typedef struct Table {
 #define sizenode(t)	(twoto((t)->lsizenode))
 
 
-/* size of buffer for 'helloO_utf8esc' function */
+/* size of buffer for 'maskO_utf8esc' function */
 #define UTF8BUFFSZ	8
 
-HELLOI_FUNC int helloO_utf8esc (char *buff, unsigned long x);
-HELLOI_FUNC int helloO_ceillog2 (unsigned int x);
-HELLOI_FUNC int helloO_rawarith (hello_State *L, int op, const TValue *p1,
+MASKI_FUNC int maskO_utf8esc (char *buff, unsigned long x);
+MASKI_FUNC int maskO_ceillog2 (unsigned int x);
+MASKI_FUNC int maskO_rawarith (mask_State *L, int op, const TValue *p1,
                              const TValue *p2, TValue *res);
-HELLOI_FUNC void helloO_arith (hello_State *L, int op, const TValue *p1,
+MASKI_FUNC void maskO_arith (mask_State *L, int op, const TValue *p1,
                            const TValue *p2, StkId res);
-HELLOI_FUNC size_t helloO_str2num (const char *s, TValue *o);
-HELLOI_FUNC int helloO_hexavalue (int c);
-HELLOI_FUNC void helloO_tostring (hello_State *L, TValue *obj);
-HELLOI_FUNC const char *helloO_pushvfstring (hello_State *L, const char *fmt,
+MASKI_FUNC size_t maskO_str2num (const char *s, TValue *o);
+MASKI_FUNC int maskO_hexavalue (int c);
+MASKI_FUNC void maskO_tostring (mask_State *L, TValue *obj);
+MASKI_FUNC const char *maskO_pushvfstring (mask_State *L, const char *fmt,
                                                        va_list argp);
-HELLOI_FUNC const char *helloO_pushfstring (hello_State *L, const char *fmt, ...);
-HELLOI_FUNC void helloO_chunkid (char *out, const char *source, size_t srclen);
+MASKI_FUNC const char *maskO_pushfstring (mask_State *L, const char *fmt, ...);
+MASKI_FUNC void maskO_chunkid (char *out, const char *source, size_t srclen);

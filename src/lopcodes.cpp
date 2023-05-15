@@ -1,11 +1,11 @@
 /*
 ** $Id: lopcodes.c $
-** Opcodes for Hello virtual machine
-** See Copyright Notice in hello.h
+** Opcodes for Mask virtual machine
+** See Copyright Notice in mask.h
 */
 
 #define lopcodes_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
@@ -15,7 +15,7 @@
 
 /* ORDER OP */
 
-HELLOI_DDEF const lu_byte helloP_opmodes[NUM_OPCODES] = {
+MASKI_DDEF const lu_byte maskP_opmodes[NUM_OPCODES] = {
 /*       MM OT IT T  A  mode		   opcode  */
   opmode(0, 0, 0, 0, 1, iABC)		/* OP_MOVE */
  ,opmode(0, 0, 0, 0, 1, iAsBx)		/* OP_LOADI */

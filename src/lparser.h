@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: lparser.h $
-** Hello Parser
-** See Copyright Notice in hello.h
+** Mask Parser
+** See Copyright Notice in mask.h
 */
 
 #include "llimits.h"
@@ -14,7 +14,7 @@
 /*
 ** Shorthand for converting a token into a non-quoted string.
 */
-#define t2s(lex, token) (helloX_token2str_noq(lex, token))
+#define t2s(lex, token) (maskX_token2str_noq(lex, token))
 
 
 /*
@@ -90,8 +90,8 @@ enum ValType : lu_byte {
 typedef struct expdesc {
   expkind k;
   union {
-    hello_Integer ival;    /* for VKINT */
-    hello_Number nval;  /* for VKFLT */
+    mask_Integer ival;    /* for VKINT */
+    mask_Number nval;  /* for VKFLT */
     TString *strval;  /* for VKSTR */
     int info;  /* for generic use */
     struct {  /* for indexed variables */
@@ -324,8 +324,8 @@ typedef struct FuncState {
 } FuncState;
 
 
-HELLOI_FUNC int helloY_nvarstack (FuncState *fs);
-HELLOI_FUNC LClosure *helloY_parser (hello_State *L, ZIO *z, Mbuffer *buff,
+MASKI_FUNC int maskY_nvarstack (FuncState *fs);
+MASKI_FUNC LClosure *maskY_parser (mask_State *L, ZIO *z, Mbuffer *buff,
                                  Dyndata *dyd, const char *name, int firstchar);
 
 

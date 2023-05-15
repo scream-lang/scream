@@ -48,4 +48,4 @@ end
 local maskc = {}
 maskc.compile = compile
 maskc.maskc = main
-return helloc
+return maskc

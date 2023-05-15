@@ -1,11 +1,11 @@
 /*
 ** $Id: lauxlib.c $
-** Auxiliary functions for building Hello libraries
-** See Copyright Notice in hello.h
+** Auxiliary functions for building Mask libraries
+** See Copyright Notice in mask.h
 */
 
 #define lauxlib_c
-#define HELLO_LIB
+#define MASK_LIB
 
 #include <errno.h>
 #include <stdarg.h>
@@ -19,11 +19,11 @@
 
 
 /*
-** This file uses only the official API of Hello.
+** This file uses only the official API of Mask.
 ** Any function declared here could be written as an application function.
 */
 
-#include "hello.h"
+#include "mask.h"
 #include "lprefix.h"
 #include "lauxlib.h"
 
@@ -50,25 +50,25 @@
 ** Search for 'objidx' in table at index -1. ('objidx' must be an
 ** absolute index.) Return 1 + string at top if it found a good name.
 */
-static int findfield (hello_State *L, int objidx, int level) {
-  if (level == 0 || !hello_istable(L, -1))
+static int findfield (mask_State *L, int objidx, int level) {
+  if (level == 0 || !mask_istable(L, -1))
     return 0;  /* not found */
-  hello_pushnil(L);  /* start 'next' loop */
-  while (hello_next(L, -2)) {  /* for each pair in table */
-    if (hello_type(L, -2) == HELLO_TSTRING) {  /* ignore non-string keys */
-      if (hello_rawequal(L, objidx, -1)) {  /* found object? */
-        hello_pop(L, 1);  /* remove value (but keep name) */
+  mask_pushnil(L);  /* start 'next' loop */
+  while (mask_next(L, -2)) {  /* for each pair in table */
+    if (mask_type(L, -2) == MASK_TSTRING) {  /* ignore non-string keys */
+      if (mask_rawequal(L, objidx, -1)) {  /* found object? */
+        mask_pop(L, 1);  /* remove value (but keep name) */
         return 1;
       }
       else if (findfield(L, objidx, level - 1)) {  /* try recursively */
         /* stack: lib_name, lib_table, field_name (top) */
-        hello_pushliteral(L, ".");  /* place '.' between the two names */
-        hello_replace(L, -3);  /* (in the slot occupied by table) */
-        hello_concat(L, 3);  /* lib_name.field_name */
+        mask_pushliteral(L, ".");  /* place '.' between the two names */
+        mask_replace(L, -3);  /* (in the slot occupied by table) */
+        mask_concat(L, 3);  /* lib_name.field_name */
         return 1;
       }
     }
-    hello_pop(L, 1);  /* remove value */
+    mask_pop(L, 1);  /* remove value */
   }
   return 0;  /* not found */
 }
@@ -77,91 +77,91 @@ static int findfield (hello_State *L, int objidx, int level) {
 /*
 ** Search for a name for a function in all loaded modules
 */
-static int pushglobalfuncname (hello_State *L, hello_Debug *ar) {
-  int top = hello_gettop(L);
-  hello_getinfo(L, "f", ar);  /* push function */
-  hello_getfield(L, HELLO_REGISTRYINDEX, HELLO_LOADED_TABLE);
+static int pushglobalfuncname (mask_State *L, mask_Debug *ar) {
+  int top = mask_gettop(L);
+  mask_getinfo(L, "f", ar);  /* push function */
+  mask_getfield(L, MASK_REGISTRYINDEX, MASK_LOADED_TABLE);
   if (findfield(L, top + 1, 2)) {
-    const char *name = hello_tostring(L, -1);
-    if (strncmp(name, HELLO_GNAME ".", 3) == 0) {  /* name start with '_G.'? */
-      hello_pushstring(L, name + 3);  /* push name without prefix */
-      hello_remove(L, -2);  /* remove original name */
+    const char *name = mask_tostring(L, -1);
+    if (strncmp(name, MASK_GNAME ".", 3) == 0) {  /* name start with '_G.'? */
+      mask_pushstring(L, name + 3);  /* push name without prefix */
+      mask_remove(L, -2);  /* remove original name */
     }
-    hello_copy(L, -1, top + 1);  /* copy name to proper place */
-    hello_settop(L, top + 1);  /* remove table "loaded" and name copy */
+    mask_copy(L, -1, top + 1);  /* copy name to proper place */
+    mask_settop(L, top + 1);  /* remove table "loaded" and name copy */
     return 1;
   }
   else {
-    hello_settop(L, top);  /* remove function and global table */
+    mask_settop(L, top);  /* remove function and global table */
     return 0;
   }
 }
 
 
-static void pushfuncname (hello_State *L, hello_Debug *ar) {
+static void pushfuncname (mask_State *L, mask_Debug *ar) {
   if (pushglobalfuncname(L, ar)) {  /* try first a global name */
-    hello_pushfstring(L, "function '%s'", hello_tostring(L, -1));
-    hello_remove(L, -2);  /* remove name */
+    mask_pushfstring(L, "function '%s'", mask_tostring(L, -1));
+    mask_remove(L, -2);  /* remove name */
   }
   else if (*ar->namewhat != '\0')  /* is there a name from code? */
-    hello_pushfstring(L, "%s '%s'", ar->namewhat, ar->name);  /* use it */
+    mask_pushfstring(L, "%s '%s'", ar->namewhat, ar->name);  /* use it */
   else if (*ar->what == 'm')  /* main? */
-      hello_pushliteral(L, "main chunk");
-  else if (*ar->what != 'C')  /* for Hello functions, use <file:line> */
-    hello_pushfstring(L, "function <%s:%d>", ar->short_src, ar->linedefined);
+      mask_pushliteral(L, "main chunk");
+  else if (*ar->what != 'C')  /* for Mask functions, use <file:line> */
+    mask_pushfstring(L, "function <%s:%d>", ar->short_src, ar->linedefined);
   else  /* nothing left... */
-    hello_pushliteral(L, "?");
+    mask_pushliteral(L, "?");
 }
 
 
-static int lastlevel (hello_State *L) {
-  hello_Debug ar;
+static int lastlevel (mask_State *L) {
+  mask_Debug ar;
   int li = 1, le = 1;
   /* find an upper bound */
-  while (hello_getstack(L, le, &ar)) { li = le; le *= 2; }
+  while (mask_getstack(L, le, &ar)) { li = le; le *= 2; }
   /* do a binary search */
   while (li < le) {
     int m = (li + le)/2;
-    if (hello_getstack(L, m, &ar)) li = m + 1;
+    if (mask_getstack(L, m, &ar)) li = m + 1;
     else le = m;
   }
   return le - 1;
 }
 
 
-HELLOLIB_API void helloL_traceback (hello_State *L, hello_State *L1,
+MASKLIB_API void maskL_traceback (mask_State *L, mask_State *L1,
                                 const char *msg, int level) {
-  helloL_Buffer b;
-  hello_Debug ar;
+  maskL_Buffer b;
+  mask_Debug ar;
   int last = lastlevel(L1);
   int limit2show = (last - level > LEVELS1 + LEVELS2) ? LEVELS1 : -1;
-  helloL_buffinit(L, &b);
+  maskL_buffinit(L, &b);
   if (msg) {
-    helloL_addstring(&b, msg);
-    helloL_addchar(&b, '\n');
+    maskL_addstring(&b, msg);
+    maskL_addchar(&b, '\n');
   }
-  helloL_addstring(&b, "stack traceback:");
-  while (hello_getstack(L1, level++, &ar)) {
+  maskL_addstring(&b, "stack traceback:");
+  while (mask_getstack(L1, level++, &ar)) {
     if (limit2show-- == 0) {  /* too many levels? */
       int n = last - level - LEVELS2 + 1;  /* number of levels to skip */
-      hello_pushfstring(L, "\n\t...\t(skipping %d levels)", n);
-      helloL_addvalue(&b);  /* add warning about skip */
+      mask_pushfstring(L, "\n\t...\t(skipping %d levels)", n);
+      maskL_addvalue(&b);  /* add warning about skip */
       level += n;  /* and skip to last levels */
     }
     else {
-      hello_getinfo(L1, "Slnt", &ar);
+      mask_getinfo(L1, "Slnt", &ar);
       if (ar.currentline <= 0)
-        hello_pushfstring(L, "\n\t%s: in ", ar.short_src);
+        mask_pushfstring(L, "\n\t%s: in ", ar.short_src);
       else
-        hello_pushfstring(L, "\n\t%s:%d: in ", ar.short_src, ar.currentline);
-      helloL_addvalue(&b);
+        mask_pushfstring(L, "\n\t%s:%d: in ", ar.short_src, ar.currentline);
+      maskL_addvalue(&b);
       pushfuncname(L, &ar);
-      helloL_addvalue(&b);
+      maskL_addvalue(&b);
       if (ar.istailcall)
-        helloL_addstring(&b, "\n\t(...tail calls...)");
+        maskL_addstring(&b, "\n\t(...tail calls...)");
     }
   }
-  helloL_pushresult(&b);
+  maskL_pushresult(&b);
 }
 
 /* }====================================================== */
@@ -173,89 +173,89 @@ HELLOLIB_API void helloL_traceback (hello_State *L, hello_State *L1,
 ** =======================================================
 */
 
-HELLOLIB_API void helloL_argerror (hello_State *L, int arg, const char *extramsg) {
-  hello_Debug ar;
-  if (!hello_getstack(L, 0, &ar))  /* no stack frame? */
-    helloL_error(L, "bad argument #%d (%s)", arg, extramsg);
-  hello_getinfo(L, "n", &ar);
+MASKLIB_API void maskL_argerror (mask_State *L, int arg, const char *extramsg) {
+  mask_Debug ar;
+  if (!mask_getstack(L, 0, &ar))  /* no stack frame? */
+    maskL_error(L, "bad argument #%d (%s)", arg, extramsg);
+  mask_getinfo(L, "n", &ar);
   if (strcmp(ar.namewhat, "method") == 0) {
     arg--;  /* do not count 'self' */
     if (arg == 0)  /* error is in the self argument itself? */
-      helloL_error(L, "calling '%s' on bad self (%s)",
+      maskL_error(L, "calling '%s' on bad self (%s)",
                            ar.name, extramsg);
   }
   if (ar.name == NULL)
-    ar.name = (pushglobalfuncname(L, &ar)) ? hello_tostring(L, -1) : "?";
-  helloL_error(L, "bad argument #%d to '%s' (%s)",
+    ar.name = (pushglobalfuncname(L, &ar)) ? mask_tostring(L, -1) : "?";
+  maskL_error(L, "bad argument #%d to '%s' (%s)",
                         arg, ar.name, extramsg);
 }
 
 
-HELLOLIB_API void helloL_typeerror (hello_State *L, int arg, const char *tname) {
+MASKLIB_API void maskL_typeerror (mask_State *L, int arg, const char *tname) {
   const char *msg;
   const char *typearg;  /* name for the type of the actual argument */
-  if (helloL_getmetafield(L, arg, "__name") == HELLO_TSTRING)
-    typearg = hello_tostring(L, -1);  /* use the given type name */
-  else if (hello_type(L, arg) == HELLO_TLIGHTUSERDATA)
+  if (maskL_getmetafield(L, arg, "__name") == MASK_TSTRING)
+    typearg = mask_tostring(L, -1);  /* use the given type name */
+  else if (mask_type(L, arg) == MASK_TLIGHTUSERDATA)
     typearg = "light userdata";  /* special name for messages */
   else
-    typearg = helloL_typename(L, arg);  /* standard name */
-  msg = hello_pushfstring(L, "%s expected, got %s", tname, typearg);
-  helloL_argerror(L, arg, msg);
+    typearg = maskL_typename(L, arg);  /* standard name */
+  msg = mask_pushfstring(L, "%s expected, got %s", tname, typearg);
+  maskL_argerror(L, arg, msg);
 }
 
 
-[[noreturn]] static void tag_error (hello_State *L, int arg, int tag) {
-  helloL_typeerror(L, arg, hello_typename(L, tag));
+[[noreturn]] static void tag_error (mask_State *L, int arg, int tag) {
+  maskL_typeerror(L, arg, mask_typename(L, tag));
 }
 
 
 /*
-** The use of 'hello_pushfstring' ensures this function does not
+** The use of 'mask_pushfstring' ensures this function does not
 ** need reserved stack space when called.
 */
-HELLOLIB_API void helloL_where (hello_State *L, int level) {
-  hello_Debug ar;
-  if (hello_getstack(L, level, &ar)) {  /* check function at level */
-    hello_getinfo(L, "Sl", &ar);  /* get info about it */
+MASKLIB_API void maskL_where (mask_State *L, int level) {
+  mask_Debug ar;
+  if (mask_getstack(L, level, &ar)) {  /* check function at level */
+    mask_getinfo(L, "Sl", &ar);  /* get info about it */
     if (ar.currentline > 0) {  /* is there info? */
-      hello_pushfstring(L, "%s:%d: ", ar.short_src, ar.currentline);
+      mask_pushfstring(L, "%s:%d: ", ar.short_src, ar.currentline);
       return;
     }
   }
-  hello_pushfstring(L, "");  /* else, no information available... */
+  mask_pushfstring(L, "");  /* else, no information available... */
 }
 
 
 /*
-** Again, the use of 'hello_pushvfstring' ensures this function does
+** Again, the use of 'mask_pushvfstring' ensures this function does
 ** not need reserved stack space when called. (At worst, it generates
 ** an error with "stack overflow" instead of the given message.)
 */
-HELLOLIB_API void helloL_error (hello_State *L, const char *fmt, ...) {
+MASKLIB_API void maskL_error (mask_State *L, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  helloL_where(L, 1);
-  hello_pushvfstring(L, fmt, argp);
+  maskL_where(L, 1);
+  mask_pushvfstring(L, fmt, argp);
   va_end(argp);
-  hello_concat(L, 2);
-  hello_error(L);
+  mask_concat(L, 2);
+  mask_error(L);
 }
 
 
-HELLOLIB_API int helloL_fileresult (hello_State *L, int stat, const char *fname) {
-  int en = errno;  /* calls to Hello API may change this value */
+MASKLIB_API int maskL_fileresult (mask_State *L, int stat, const char *fname) {
+  int en = errno;  /* calls to Mask API may change this value */
   if (stat) {
-    hello_pushboolean(L, 1);
+    mask_pushboolean(L, 1);
     return 1;
   }
   else {
-    helloL_pushfail(L);
+    maskL_pushfail(L);
     if (fname)
-      hello_pushfstring(L, "%s: %s", fname, strerror(en));
+      mask_pushfstring(L, "%s: %s", fname, strerror(en));
     else
-      hello_pushstring(L, strerror(en));
-    hello_pushinteger(L, en);
+      mask_pushstring(L, strerror(en));
+    mask_pushinteger(L, en);
     return 3;
   }
 }
@@ -263,7 +263,7 @@ HELLOLIB_API int helloL_fileresult (hello_State *L, int stat, const char *fname)
 
 #if !defined(l_inspectstat)	/* { */
 
-#if defined(HELLO_USE_POSIX)
+#if defined(MASK_USE_POSIX)
 
 #include <sys/wait.h>
 
@@ -283,18 +283,18 @@ HELLOLIB_API int helloL_fileresult (hello_State *L, int stat, const char *fname)
 #endif				/* } */
 
 
-HELLOLIB_API int helloL_execresult (hello_State *L, int stat) {
+MASKLIB_API int maskL_execresult (mask_State *L, int stat) {
   if (stat != 0 && errno != 0)  /* error with an 'errno'? */
-    return helloL_fileresult(L, 0, NULL);
+    return maskL_fileresult(L, 0, NULL);
   else {
     const char *what = "exit";  /* type of termination */
     l_inspectstat(stat, what);  /* interpret result */
     if (*what == 'e' && stat == 0)  /* successful termination? */
-      hello_pushboolean(L, 1);
+      mask_pushboolean(L, 1);
     else
-      helloL_pushfail(L);
-    hello_pushstring(L, what);
-    hello_pushinteger(L, stat);
+      maskL_pushfail(L);
+    mask_pushstring(L, what);
+    mask_pushinteger(L, stat);
     return 3;  /* return true/fail,what,code */
   }
 }
@@ -309,33 +309,33 @@ HELLOLIB_API int helloL_execresult (hello_State *L, int stat) {
 ** =======================================================
 */
 
-HELLOLIB_API int helloL_newmetatable (hello_State *L, const char *tname) {
-  if (helloL_getmetatable(L, tname) != HELLO_TNIL)  /* name already in use? */
+MASKLIB_API int maskL_newmetatable (mask_State *L, const char *tname) {
+  if (maskL_getmetatable(L, tname) != MASK_TNIL)  /* name already in use? */
     return 0;  /* leave previous value on top, but return 0 */
-  hello_pop(L, 1);
-  hello_createtable(L, 0, 2);  /* create metatable */
-  hello_pushstring(L, tname);
-  hello_setfield(L, -2, "__name");  /* metatable.__name = tname */
-  hello_pushvalue(L, -1);
-  hello_setfield(L, HELLO_REGISTRYINDEX, tname);  /* registry.name = metatable */
+  mask_pop(L, 1);
+  mask_createtable(L, 0, 2);  /* create metatable */
+  mask_pushstring(L, tname);
+  mask_setfield(L, -2, "__name");  /* metatable.__name = tname */
+  mask_pushvalue(L, -1);
+  mask_setfield(L, MASK_REGISTRYINDEX, tname);  /* registry.name = metatable */
   return 1;
 }
 
 
-HELLOLIB_API void helloL_setmetatable (hello_State *L, const char *tname) {
-  helloL_getmetatable(L, tname);
-  hello_setmetatable(L, -2);
+MASKLIB_API void maskL_setmetatable (mask_State *L, const char *tname) {
+  maskL_getmetatable(L, tname);
+  mask_setmetatable(L, -2);
 }
 
 
-HELLOLIB_API void *helloL_testudata (hello_State *L, int ud, const char *tname) {
-  void *p = hello_touserdata(L, ud);
+MASKLIB_API void *maskL_testudata (mask_State *L, int ud, const char *tname) {
+  void *p = mask_touserdata(L, ud);
   if (p != NULL) {  /* value is a userdata? */
-    if (hello_getmetatable(L, ud)) {  /* does it have a metatable? */
-      helloL_getmetatable(L, tname);  /* get correct metatable */
-      if (!hello_rawequal(L, -1, -2))  /* not the same? */
+    if (mask_getmetatable(L, ud)) {  /* does it have a metatable? */
+      maskL_getmetatable(L, tname);  /* get correct metatable */
+      if (!mask_rawequal(L, -1, -2))  /* not the same? */
         p = NULL;  /* value is a userdata with wrong metatable */
-      hello_pop(L, 2);  /* remove both metatables */
+      mask_pop(L, 2);  /* remove both metatables */
       return p;
     }
   }
@@ -343,9 +343,9 @@ HELLOLIB_API void *helloL_testudata (hello_State *L, int ud, const char *tname) 
 }
 
 
-HELLOLIB_API void *helloL_checkudata (hello_State *L, int ud, const char *tname) {
-  void *p = helloL_testudata(L, ud, tname);
-  helloL_argexpected(L, p != NULL, ud, tname);
+MASKLIB_API void *maskL_checkudata (mask_State *L, int ud, const char *tname) {
+  void *p = maskL_testudata(L, ud, tname);
+  maskL_argexpected(L, p != NULL, ud, tname);
   return p;
 }
 
@@ -358,15 +358,15 @@ HELLOLIB_API void *helloL_checkudata (hello_State *L, int ud, const char *tname)
 ** =======================================================
 */
 
-HELLOLIB_API int helloL_checkoption (hello_State *L, int arg, const char *def,
+MASKLIB_API int maskL_checkoption (mask_State *L, int arg, const char *def,
                                  const char *const lst[]) {
-  const char *name = (def) ? helloL_optstring(L, arg, def) :
-                             helloL_checkstring(L, arg);
+  const char *name = (def) ? maskL_optstring(L, arg, def) :
+                             maskL_checkstring(L, arg);
   int i;
   for (i=0; lst[i]; i++)
     if (strcmp(lst[i], name) == 0)
       return i;
-  helloL_argerror(L, arg, hello_pushfstring(L, "invalid option '%s'", name));
+  maskL_argerror(L, arg, mask_pushfstring(L, "invalid option '%s'", name));
 }
 
 
@@ -374,74 +374,74 @@ HELLOLIB_API int helloL_checkoption (hello_State *L, int arg, const char *def,
 ** Ensures the stack has at least 'space' extra slots, raising an error
 ** if it cannot fulfill the request. (The error handling needs a few
 ** extra slots to format the error message. In case of an error without
-** this extra space, Hello will generate the same 'stack overflow' error,
+** this extra space, Mask will generate the same 'stack overflow' error,
 ** but without 'msg'.)
 */
-HELLOLIB_API void helloL_checkstack (hello_State *L, int space, const char *msg) {
-  if (l_unlikely(!hello_checkstack(L, space))) {
+MASKLIB_API void maskL_checkstack (mask_State *L, int space, const char *msg) {
+  if (l_unlikely(!mask_checkstack(L, space))) {
     if (msg)
-      helloL_error(L, "stack overflow (%s)", msg);
+      maskL_error(L, "stack overflow (%s)", msg);
     else
-      helloL_error(L, "stack overflow");
+      maskL_error(L, "stack overflow");
   }
 }
 
 
-HELLOLIB_API void helloL_checktype (hello_State *L, int arg, int t) {
-  if (l_unlikely(hello_type(L, arg) != t))
+MASKLIB_API void maskL_checktype (mask_State *L, int arg, int t) {
+  if (l_unlikely(mask_type(L, arg) != t))
     tag_error(L, arg, t);
 }
 
 
-HELLOLIB_API void helloL_checkany (hello_State *L, int arg) {
-  if (l_unlikely(hello_type(L, arg) == HELLO_TNONE))
-    helloL_argerror(L, arg, "value expected");
+MASKLIB_API void maskL_checkany (mask_State *L, int arg) {
+  if (l_unlikely(mask_type(L, arg) == MASK_TNONE))
+    maskL_argerror(L, arg, "value expected");
 }
 
 
-HELLOLIB_API const char *helloL_checklstring (hello_State *L, int arg, size_t *len) {
-  const char *s = hello_tolstring(L, arg, len);
-  if (l_unlikely(!s)) tag_error(L, arg, HELLO_TSTRING);
+MASKLIB_API const char *maskL_checklstring (mask_State *L, int arg, size_t *len) {
+  const char *s = mask_tolstring(L, arg, len);
+  if (l_unlikely(!s)) tag_error(L, arg, MASK_TSTRING);
   return s;
 }
 
 
-HELLOLIB_API const char *helloL_optlstring (hello_State *L, int arg,
+MASKLIB_API const char *maskL_optlstring (mask_State *L, int arg,
                                         const char *def, size_t *len) {
-  if (hello_isnoneornil(L, arg)) {
+  if (mask_isnoneornil(L, arg)) {
     if (len)
       *len = (def ? strlen(def) : 0);
     return def;
   }
-  else return helloL_checklstring(L, arg, len);
+  else return maskL_checklstring(L, arg, len);
 }
 
 
-HELLOLIB_API hello_Number helloL_checknumber (hello_State *L, int arg) {
+MASKLIB_API mask_Number maskL_checknumber (mask_State *L, int arg) {
   int isnum;
-  hello_Number d = hello_tonumberx(L, arg, &isnum);
+  mask_Number d = mask_tonumberx(L, arg, &isnum);
   if (l_unlikely(!isnum))
-    tag_error(L, arg, HELLO_TNUMBER);
+    tag_error(L, arg, MASK_TNUMBER);
   return d;
 }
 
 
-HELLOLIB_API hello_Number helloL_optnumber (hello_State *L, int arg, hello_Number def) {
-  return helloL_opt(L, helloL_checknumber, arg, def);
+MASKLIB_API mask_Number maskL_optnumber (mask_State *L, int arg, mask_Number def) {
+  return maskL_opt(L, maskL_checknumber, arg, def);
 }
 
 
-[[noreturn]] static void interror (hello_State *L, int arg) {
-  if (hello_isnumber(L, arg))
-    helloL_argerror(L, arg, "number has no integer representation");
+[[noreturn]] static void interror (mask_State *L, int arg) {
+  if (mask_isnumber(L, arg))
+    maskL_argerror(L, arg, "number has no integer representation");
   else
-    tag_error(L, arg, HELLO_TNUMBER);
+    tag_error(L, arg, MASK_TNUMBER);
 }
 
 
-HELLOLIB_API hello_Integer helloL_checkinteger (hello_State *L, int arg) {
+MASKLIB_API mask_Integer maskL_checkinteger (mask_State *L, int arg) {
   int isnum;
-  hello_Integer d = hello_tointegerx(L, arg, &isnum);
+  mask_Integer d = mask_tointegerx(L, arg, &isnum);
   if (l_unlikely(!isnum)) {
     interror(L, arg);
   }
@@ -449,9 +449,9 @@ HELLOLIB_API hello_Integer helloL_checkinteger (hello_State *L, int arg) {
 }
 
 
-HELLOLIB_API hello_Integer helloL_optinteger (hello_State *L, int arg,
-                                                      hello_Integer def) {
-  return helloL_opt(L, helloL_checkinteger, arg, def);
+MASKLIB_API mask_Integer maskL_optinteger (mask_State *L, int arg,
+                                                      mask_Integer def) {
+  return maskL_opt(L, maskL_checkinteger, arg, def);
 }
 
 /* }====================================================== */
@@ -470,14 +470,14 @@ typedef struct UBox {
 } UBox;
 
 
-static void *resizebox (hello_State *L, int idx, size_t newsize) {
+static void *resizebox (mask_State *L, int idx, size_t newsize) {
   void *ud;
-  hello_Alloc allocf = hello_getallocf(L, &ud);
-  UBox *box = (UBox *)hello_touserdata(L, idx);
+  mask_Alloc allocf = mask_getallocf(L, &ud);
+  UBox *box = (UBox *)mask_touserdata(L, idx);
   void *temp = allocf(ud, box->box, box->bsize, newsize);
   if (l_unlikely(temp == NULL && newsize > 0)) {  /* allocation error? */
-    hello_pushliteral(L, "not enough memory");
-    hello_error(L);  /* raise a memory error */
+    mask_pushliteral(L, "not enough memory");
+    mask_error(L);  /* raise a memory error */
   }
   box->box = temp;
   box->bsize = newsize;
@@ -485,26 +485,26 @@ static void *resizebox (hello_State *L, int idx, size_t newsize) {
 }
 
 
-static int boxgc (hello_State *L) {
+static int boxgc (mask_State *L) {
   resizebox(L, 1, 0);
   return 0;
 }
 
 
-static const helloL_Reg boxmt[] = {  /* box metamethods */
+static const maskL_Reg boxmt[] = {  /* box metamethods */
   {"__gc", boxgc},
   {"__close", boxgc},
   {NULL, NULL}
 };
 
 
-static void newbox (hello_State *L) {
-  UBox *box = (UBox *)hello_newuserdatauv(L, sizeof(UBox), 0);
+static void newbox (mask_State *L) {
+  UBox *box = (UBox *)mask_newuserdatauv(L, sizeof(UBox), 0);
   box->box = NULL;
   box->bsize = 0;
-  if (helloL_newmetatable(L, "_UBOX*"))  /* creating metatable? */
-    helloL_setfuncs(L, boxmt, 0);  /* set its metamethods */
-  hello_setmetatable(L, -2);
+  if (maskL_newmetatable(L, "_UBOX*"))  /* creating metatable? */
+    maskL_setfuncs(L, boxmt, 0);  /* set its metamethods */
+  mask_setmetatable(L, -2);
 }
 
 
@@ -520,8 +520,8 @@ static void newbox (hello_State *L) {
 ** cannot be NULL) or it is a placeholder for the buffer.
 */
 #define checkbufferlevel(B,idx)  \
-  hello_assert(buffonstack(B) ? hello_touserdata(B->L, idx) != NULL  \
-                            : hello_touserdata(B->L, idx) == (void*)B)
+  mask_assert(buffonstack(B) ? mask_touserdata(B->L, idx) != NULL  \
+                            : mask_touserdata(B->L, idx) == (void*)B)
 
 
 /*
@@ -529,10 +529,10 @@ static void newbox (hello_State *L) {
 ** bytes. (The test for "not big enough" also gets the case when the
 ** computation of 'newsize' overflows.)
 */
-static size_t newbuffsize (helloL_Buffer *B, size_t sz) {
+static size_t newbuffsize (maskL_Buffer *B, size_t sz) {
   size_t newsize = (B->size / 2) * 3;  /* buffer size * 1.5 */
   if (l_unlikely(MAX_SIZET - sz < B->n))  /* overflow in (B->n + sz)? */
-    helloL_error(B->L, "buffer too large");
+    maskL_error(B->L, "buffer too large");
   if (newsize < B->n + sz)  /* not big enough? */
     newsize = B->n + sz;
   return newsize;
@@ -544,22 +544,22 @@ static size_t newbuffsize (helloL_Buffer *B, size_t sz) {
 ** 'B'. 'boxidx' is the relative position in the stack where is the
 ** buffer's box or its placeholder.
 */
-static char *prepbuffsize (helloL_Buffer *B, size_t sz, int boxidx) {
+static char *prepbuffsize (maskL_Buffer *B, size_t sz, int boxidx) {
   checkbufferlevel(B, boxidx);
   if (B->size - B->n >= sz)  /* enough space? */
     return B->b + B->n;
   else {
-    hello_State *L = B->L;
+    mask_State *L = B->L;
     char *newbuff;
     size_t newsize = newbuffsize(B, sz);
     /* create larger buffer */
     if (buffonstack(B))  /* buffer already has a box? */
       newbuff = (char *)resizebox(L, boxidx, newsize);  /* resize it */
     else {  /* no box yet */
-      hello_remove(L, boxidx);  /* remove placeholder */
+      mask_remove(L, boxidx);  /* remove placeholder */
       newbox(L);  /* create a new box */
-      hello_insert(L, boxidx);  /* move box to its intended position */
-      hello_toclose(L, boxidx);
+      mask_insert(L, boxidx);  /* move box to its intended position */
+      mask_toclose(L, boxidx);
       newbuff = (char *)resizebox(L, boxidx, newsize);
       memcpy(newbuff, B->b, B->n * sizeof(char));  /* copy original content */
     }
@@ -572,72 +572,72 @@ static char *prepbuffsize (helloL_Buffer *B, size_t sz, int boxidx) {
 /*
 ** returns a pointer to a free area with at least 'sz' bytes
 */
-HELLOLIB_API char *helloL_prepbuffsize (helloL_Buffer *B, size_t sz) {
+MASKLIB_API char *maskL_prepbuffsize (maskL_Buffer *B, size_t sz) {
   return prepbuffsize(B, sz, -1);
 }
 
 
-HELLOLIB_API void helloL_addlstring (helloL_Buffer *B, const char *s, size_t l) {
+MASKLIB_API void maskL_addlstring (maskL_Buffer *B, const char *s, size_t l) {
   if (l > 0) {  /* avoid 'memcpy' when 's' can be NULL */
     char *b = prepbuffsize(B, l, -1);
     memcpy(b, s, l * sizeof(char));
-    helloL_addsize(B, l);
+    maskL_addsize(B, l);
   }
 }
 
 
-HELLOLIB_API void helloL_addstring (helloL_Buffer *B, const char *s) {
-  helloL_addlstring(B, s, strlen(s));
+MASKLIB_API void maskL_addstring (maskL_Buffer *B, const char *s) {
+  maskL_addlstring(B, s, strlen(s));
 }
 
 
-HELLOLIB_API void helloL_pushresult (helloL_Buffer *B) {
-  hello_State *L = B->L;
+MASKLIB_API void maskL_pushresult (maskL_Buffer *B) {
+  mask_State *L = B->L;
   checkbufferlevel(B, -1);
-  hello_pushlstring(L, B->b, B->n);
+  mask_pushlstring(L, B->b, B->n);
   if (buffonstack(B))
-    hello_closeslot(L, -2);  /* close the box */
-  hello_remove(L, -2);  /* remove box or placeholder from the stack */
+    mask_closeslot(L, -2);  /* close the box */
+  mask_remove(L, -2);  /* remove box or placeholder from the stack */
 }
 
 
-HELLOLIB_API void helloL_pushresultsize (helloL_Buffer *B, size_t sz) {
-  helloL_addsize(B, sz);
-  helloL_pushresult(B);
+MASKLIB_API void maskL_pushresultsize (maskL_Buffer *B, size_t sz) {
+  maskL_addsize(B, sz);
+  maskL_pushresult(B);
 }
 
 
 /*
-** 'helloL_addvalue' is the only function in the Buffer system where the
+** 'maskL_addvalue' is the only function in the Buffer system where the
 ** box (if existent) is not on the top of the stack. So, instead of
-** calling 'helloL_addlstring', it replicates the code using -2 as the
+** calling 'maskL_addlstring', it replicates the code using -2 as the
 ** last argument to 'prepbuffsize', signaling that the box is (or will
 ** be) below the string being added to the buffer. (Box creation can
 ** trigger an emergency GC, so we should not remove the string from the
 ** stack before we have the space guaranteed.)
 */
-HELLOLIB_API void helloL_addvalue (helloL_Buffer *B) {
-  hello_State *L = B->L;
+MASKLIB_API void maskL_addvalue (maskL_Buffer *B) {
+  mask_State *L = B->L;
   size_t len;
-  const char *s = hello_tolstring(L, -1, &len);
+  const char *s = mask_tolstring(L, -1, &len);
   char *b = prepbuffsize(B, len, -2);
   memcpy(b, s, len * sizeof(char));
-  helloL_addsize(B, len);
-  hello_pop(L, 1);  /* pop string */
+  maskL_addsize(B, len);
+  mask_pop(L, 1);  /* pop string */
 }
 
 
-HELLOLIB_API void helloL_buffinit (hello_State *L, helloL_Buffer *B) {
+MASKLIB_API void maskL_buffinit (mask_State *L, maskL_Buffer *B) {
   B->L = L;
   B->b = B->init.b;
   B->n = 0;
-  B->size = HELLOL_BUFFERSIZE;
-  hello_pushlightuserdata(L, (void*)B);  /* push placeholder */
+  B->size = MASKL_BUFFERSIZE;
+  mask_pushlightuserdata(L, (void*)B);  /* push placeholder */
 }
 
 
-HELLOLIB_API char *helloL_buffinitsize (hello_State *L, helloL_Buffer *B, size_t sz) {
-  helloL_buffinit(L, B);
+MASKLIB_API char *maskL_buffinitsize (mask_State *L, maskL_Buffer *B, size_t sz) {
+  maskL_buffinit(L, B);
   return prepbuffsize(B, sz, -1);
 }
 
@@ -651,49 +651,49 @@ HELLOLIB_API char *helloL_buffinitsize (hello_State *L, helloL_Buffer *B, size_t
 */
 
 /* index of free-list header (after the predefined values) */
-#define freelist	(HELLO_RIDX_LAST + 1)
+#define freelist	(MASK_RIDX_LAST + 1)
 
 /*
 ** The previously freed references form a linked list:
 ** t[freelist] is the index of a first free index, or zero if list is
 ** empty; t[t[freelist]] is the index of the second element; etc.
 */
-HELLOLIB_API int helloL_ref (hello_State *L, int t) {
+MASKLIB_API int maskL_ref (mask_State *L, int t) {
   int ref;
-  if (hello_isnil(L, -1)) {
-    hello_pop(L, 1);  /* remove from stack */
-    return HELLO_REFNIL;  /* 'nil' has a unique fixed reference */
+  if (mask_isnil(L, -1)) {
+    mask_pop(L, 1);  /* remove from stack */
+    return MASK_REFNIL;  /* 'nil' has a unique fixed reference */
   }
-  t = hello_absindex(L, t);
-  if (hello_rawgeti(L, t, freelist) == HELLO_TNIL) {  /* first access? */
+  t = mask_absindex(L, t);
+  if (mask_rawgeti(L, t, freelist) == MASK_TNIL) {  /* first access? */
     ref = 0;  /* list is empty */
-    hello_pushinteger(L, 0);  /* initialize as an empty list */
-    hello_rawseti(L, t, freelist);  /* ref = t[freelist] = 0 */
+    mask_pushinteger(L, 0);  /* initialize as an empty list */
+    mask_rawseti(L, t, freelist);  /* ref = t[freelist] = 0 */
   }
   else {  /* already initialized */
-    hello_assert(hello_isinteger(L, -1));
-    ref = (int)hello_tointeger(L, -1);  /* ref = t[freelist] */
+    mask_assert(mask_isinteger(L, -1));
+    ref = (int)mask_tointeger(L, -1);  /* ref = t[freelist] */
   }
-  hello_pop(L, 1);  /* remove element from stack */
+  mask_pop(L, 1);  /* remove element from stack */
   if (ref != 0) {  /* any free element? */
-    hello_rawgeti(L, t, ref);  /* remove it from list */
-    hello_rawseti(L, t, freelist);  /* (t[freelist] = t[ref]) */
+    mask_rawgeti(L, t, ref);  /* remove it from list */
+    mask_rawseti(L, t, freelist);  /* (t[freelist] = t[ref]) */
   }
   else  /* no free elements */
-    ref = (int)hello_rawlen(L, t) + 1;  /* get a new reference */
-  hello_rawseti(L, t, ref);
+    ref = (int)mask_rawlen(L, t) + 1;  /* get a new reference */
+  mask_rawseti(L, t, ref);
   return ref;
 }
 
 
-HELLOLIB_API void helloL_unref (hello_State *L, int t, int ref) {
+MASKLIB_API void maskL_unref (mask_State *L, int t, int ref) {
   if (ref >= 0) {
-    t = hello_absindex(L, t);
-    hello_rawgeti(L, t, freelist);
-    hello_assert(hello_isinteger(L, -1));
-    hello_rawseti(L, t, ref);  /* t[ref] = t[freelist] */
-    hello_pushinteger(L, ref);
-    hello_rawseti(L, t, freelist);  /* t[freelist] = ref */
+    t = mask_absindex(L, t);
+    mask_rawgeti(L, t, freelist);
+    mask_assert(mask_isinteger(L, -1));
+    mask_rawseti(L, t, ref);  /* t[ref] = t[freelist] */
+    mask_pushinteger(L, ref);
+    mask_rawseti(L, t, freelist);  /* t[freelist] = ref */
   }
 }
 
@@ -713,7 +713,7 @@ typedef struct LoadF {
 } LoadF;
 
 
-static const char *getF (hello_State *L, void *ud, size_t *size) {
+static const char *getF (mask_State *L, void *ud, size_t *size) {
   LoadF *lf = (LoadF *)ud;
   (void)L;  /* not used */
   if (lf->n > 0) {  /* are there pre-read characters to be read? */
@@ -731,12 +731,12 @@ static const char *getF (hello_State *L, void *ud, size_t *size) {
 }
 
 
-static int errfile (hello_State *L, const char *what, int fnameindex) {
+static int errfile (mask_State *L, const char *what, int fnameindex) {
   const char *serr = strerror(errno);
-  const char *filename = hello_tostring(L, fnameindex) + 1;
-  hello_pushfstring(L, "cannot %s %s: %s", what, filename, serr);
-  hello_remove(L, fnameindex);
-  return HELLO_ERRFILE;
+  const char *filename = mask_tostring(L, fnameindex) + 1;
+  mask_pushfstring(L, "cannot %s %s: %s", what, filename, serr);
+  mask_remove(L, fnameindex);
+  return MASK_ERRFILE;
 }
 
 
@@ -756,7 +756,7 @@ static int skipBOM (FILE *f) {
 
 
 #ifdef _WIN32
-std::wstring helloL_utf8_to_utf16(const char *utf8, size_t utf8_len) {
+std::wstring maskL_utf8_to_utf16(const char *utf8, size_t utf8_len) {
   std::wstring utf16;
   const int sizeRequired = MultiByteToWideChar(CP_UTF8, 0, utf8, (int)utf8_len, nullptr, 0);
   if (l_likely(sizeRequired != 0)) {
@@ -766,7 +766,7 @@ std::wstring helloL_utf8_to_utf16(const char *utf8, size_t utf8_len) {
   return utf16;
 }
 
-std::string helloL_utf16_to_utf8(const wchar_t *utf16, size_t utf16_len) {
+std::string maskL_utf16_to_utf8(const wchar_t *utf16, size_t utf16_len) {
   std::string utf8;
   const int sizeRequired = WideCharToMultiByte(CP_UTF8, 0, utf16, (int)utf16_len, nullptr, 0, 0, 0);
   if (l_likely(sizeRequired != 0)) {
@@ -778,13 +778,13 @@ std::string helloL_utf16_to_utf8(const wchar_t *utf16, size_t utf16_len) {
 #endif
 
 
-HELLOLIB_API FILE* (helloL_fopen) (const char *filename, size_t filename_len,
+MASKLIB_API FILE* (maskL_fopen) (const char *filename, size_t filename_len,
                                const char *mode, size_t mode_len) {
 #ifdef _WIN32
   // From what I could gather online, UTF-8 is the path encoding convention on *nix systems,
   // so I've ultimately decided that we should just "fix" the fact that Windows doesn't use UTF-8.
-  std::wstring wfilename = helloL_utf8_to_utf16(filename, filename_len);
-  std::wstring wmode = helloL_utf8_to_utf16(mode, mode_len);
+  std::wstring wfilename = maskL_utf8_to_utf16(filename, filename_len);
+  std::wstring wmode = maskL_utf8_to_utf16(mode, mode_len);
   return _wfopen(wfilename.c_str(), wmode.c_str());
 #else
   return fopen(filename, mode);
@@ -811,35 +811,35 @@ static int skipcomment (FILE *f, int *cp) {
   else return 0;  /* no comment */
 }
 
-#ifdef HELLO_LOADFILE_HOOK
-extern "C" bool HELLO_LOADFILE_HOOK(const char* filename);
+#ifdef MASK_LOADFILE_HOOK
+extern "C" bool MASK_LOADFILE_HOOK(const char* filename);
 #endif
 
-HELLOLIB_API int helloL_loadfilex (hello_State *L, const char *filename,
+MASKLIB_API int maskL_loadfilex (mask_State *L, const char *filename,
                                              const char *mode) {
-#ifdef HELLO_LOADFILE_HOOK
-  if (!HELLO_LOADFILE_HOOK(filename)) {
-    hello_pushfstring(L, "%s failed content moderation policy", filename);
-    return HELLO_ERRFILE;
+#ifdef MASK_LOADFILE_HOOK
+  if (!MASK_LOADFILE_HOOK(filename)) {
+    mask_pushfstring(L, "%s failed content moderation policy", filename);
+    return MASK_ERRFILE;
   }
 #endif
   LoadF lf;
   int status, readstatus;
   int c;
-  int fnameindex = hello_gettop(L) + 1;  /* index of filename on the stack */
+  int fnameindex = mask_gettop(L) + 1;  /* index of filename on the stack */
   if (filename == NULL) {
-    hello_pushliteral(L, "=stdin");
+    mask_pushliteral(L, "=stdin");
     lf.f = stdin;
   }
   else {
-    hello_pushfstring(L, "@%s", filename);
-    lf.f = helloL_fopen(filename, strlen(filename), "r", sizeof("r") - sizeof(char));
+    mask_pushfstring(L, "@%s", filename);
+    lf.f = maskL_fopen(filename, strlen(filename), "r", sizeof("r") - sizeof(char));
     if (lf.f == NULL) return errfile(L, "open", fnameindex);
   }
   lf.n = 0;
   if (skipcomment(lf.f, &c))  /* read initial portion */
     lf.buff[lf.n++] = '\n';  /* add newline to correct line numbers */
-  if (c == HELLO_SIGNATURE[0]) {  /* binary file? */
+  if (c == MASK_SIGNATURE[0]) {  /* binary file? */
     lf.n = 0;  /* remove possible newline */
     if (filename) {  /* "real" file? */
       lf.f = freopen(filename, "rb", lf.f);  /* reopen in binary mode */
@@ -849,14 +849,14 @@ HELLOLIB_API int helloL_loadfilex (hello_State *L, const char *filename,
   }
   if (c != EOF)
     lf.buff[lf.n++] = c;  /* 'c' is the first character of the stream */
-  status = hello_load(L, getF, &lf, hello_tostring(L, -1), mode);
+  status = mask_load(L, getF, &lf, mask_tostring(L, -1), mode);
   readstatus = ferror(lf.f);
   if (filename) fclose(lf.f);  /* close file (even in case of errors) */
   if (readstatus) {
-    hello_settop(L, fnameindex);  /* ignore results from 'hello_load' */
+    mask_settop(L, fnameindex);  /* ignore results from 'mask_load' */
     return errfile(L, "read", fnameindex);
   }
-  hello_remove(L, fnameindex);
+  mask_remove(L, fnameindex);
   return status;
 }
 
@@ -867,7 +867,7 @@ typedef struct LoadS {
 } LoadS;
 
 
-static const char *getS (hello_State *L, void *ud, size_t *size) {
+static const char *getS (mask_State *L, void *ud, size_t *size) {
   LoadS *ls = (LoadS *)ud;
   (void)L;  /* not used */
   if (ls->size == 0) return NULL;
@@ -877,97 +877,97 @@ static const char *getS (hello_State *L, void *ud, size_t *size) {
 }
 
 
-HELLOLIB_API int helloL_loadbufferx (hello_State *L, const char *buff, size_t size,
+MASKLIB_API int maskL_loadbufferx (mask_State *L, const char *buff, size_t size,
                                  const char *name, const char *mode) {
   LoadS ls;
   ls.s = buff;
   ls.size = size;
-  return hello_load(L, getS, &ls, name, mode);
+  return mask_load(L, getS, &ls, name, mode);
 }
 
 
-HELLOLIB_API int helloL_loadstring (hello_State *L, const char *s) {
-  return helloL_loadbuffer(L, s, strlen(s), s);
+MASKLIB_API int maskL_loadstring (mask_State *L, const char *s) {
+  return maskL_loadbuffer(L, s, strlen(s), s);
 }
 
 /* }====================================================== */
 
 
 
-HELLOLIB_API int helloL_getmetafield (hello_State *L, int obj, const char *event) {
-  if (!hello_getmetatable(L, obj))  /* no metatable? */
-    return HELLO_TNIL;
+MASKLIB_API int maskL_getmetafield (mask_State *L, int obj, const char *event) {
+  if (!mask_getmetatable(L, obj))  /* no metatable? */
+    return MASK_TNIL;
   else {
     int tt;
-    hello_pushstring(L, event);
-    tt = hello_rawget(L, -2);
-    if (tt == HELLO_TNIL)  /* is metafield nil? */
-      hello_pop(L, 2);  /* remove metatable and metafield */
+    mask_pushstring(L, event);
+    tt = mask_rawget(L, -2);
+    if (tt == MASK_TNIL)  /* is metafield nil? */
+      mask_pop(L, 2);  /* remove metatable and metafield */
     else
-      hello_remove(L, -2);  /* remove only metatable */
+      mask_remove(L, -2);  /* remove only metatable */
     return tt;  /* return metafield type */
   }
 }
 
 
-HELLOLIB_API int helloL_callmeta (hello_State *L, int obj, const char *event) {
-  obj = hello_absindex(L, obj);
-  if (helloL_getmetafield(L, obj, event) == HELLO_TNIL)  /* no metafield? */
+MASKLIB_API int maskL_callmeta (mask_State *L, int obj, const char *event) {
+  obj = mask_absindex(L, obj);
+  if (maskL_getmetafield(L, obj, event) == MASK_TNIL)  /* no metafield? */
     return 0;
-  hello_pushvalue(L, obj);
-  hello_call(L, 1, 1);
+  mask_pushvalue(L, obj);
+  mask_call(L, 1, 1);
   return 1;
 }
 
 
-HELLOLIB_API hello_Integer helloL_len (hello_State *L, int idx) {
-  hello_Integer l;
+MASKLIB_API mask_Integer maskL_len (mask_State *L, int idx) {
+  mask_Integer l;
   int isnum;
-  hello_len(L, idx);
-  l = hello_tointegerx(L, -1, &isnum);
+  mask_len(L, idx);
+  l = mask_tointegerx(L, -1, &isnum);
   if (l_unlikely(!isnum))
-    helloL_error(L, "object length is not an integer");
-  hello_pop(L, 1);  /* remove object */
+    maskL_error(L, "object length is not an integer");
+  mask_pop(L, 1);  /* remove object */
   return l;
 }
 
 
-HELLOLIB_API const char *helloL_tolstring (hello_State *L, int idx, size_t *len) {
-  idx = hello_absindex(L,idx);
-  if (helloL_callmeta(L, idx, "__tostring")) {  /* metafield? */
-    if (!hello_isstring(L, -1))
-      helloL_error(L, "'__tostring' must return a string");
+MASKLIB_API const char *maskL_tolstring (mask_State *L, int idx, size_t *len) {
+  idx = mask_absindex(L,idx);
+  if (maskL_callmeta(L, idx, "__tostring")) {  /* metafield? */
+    if (!mask_isstring(L, -1))
+      maskL_error(L, "'__tostring' must return a string");
   }
   else {
-    switch (hello_type(L, idx)) {
-      case HELLO_TNUMBER: {
-        if (hello_isinteger(L, idx))
-          hello_pushfstring(L, "%I", (HELLOI_UACINT)hello_tointeger(L, idx));
+    switch (mask_type(L, idx)) {
+      case MASK_TNUMBER: {
+        if (mask_isinteger(L, idx))
+          mask_pushfstring(L, "%I", (MASKI_UACINT)mask_tointeger(L, idx));
         else
-          hello_pushfstring(L, "%f", (HELLOI_UACNUMBER)hello_tonumber(L, idx));
+          mask_pushfstring(L, "%f", (MASKI_UACNUMBER)mask_tonumber(L, idx));
         break;
       }
-      case HELLO_TSTRING:
-        hello_pushvalue(L, idx);
+      case MASK_TSTRING:
+        mask_pushvalue(L, idx);
         break;
-      case HELLO_TBOOLEAN:
-        hello_pushstring(L, (hello_toboolean(L, idx) ? "true" : "false"));
+      case MASK_TBOOLEAN:
+        mask_pushstring(L, (mask_toboolean(L, idx) ? "true" : "false"));
         break;
-      case HELLO_TNIL:
-        hello_pushliteral(L, "nil");
+      case MASK_TNIL:
+        mask_pushliteral(L, "nil");
         break;
       default: {
-        int tt = helloL_getmetafield(L, idx, "__name");  /* try name */
-        const char *kind = (tt == HELLO_TSTRING) ? hello_tostring(L, -1) :
-                                                 helloL_typename(L, idx);
-        hello_pushfstring(L, "%s: %p", kind, hello_topointer(L, idx));
-        if (tt != HELLO_TNIL)
-          hello_remove(L, -2);  /* remove '__name' */
+        int tt = maskL_getmetafield(L, idx, "__name");  /* try name */
+        const char *kind = (tt == MASK_TSTRING) ? mask_tostring(L, -1) :
+                                                 maskL_typename(L, idx);
+        mask_pushfstring(L, "%s: %p", kind, mask_topointer(L, idx));
+        if (tt != MASK_TNIL)
+          mask_remove(L, -2);  /* remove '__name' */
         break;
       }
     }
   }
-  return hello_tolstring(L, -1, len);
+  return mask_tolstring(L, -1, len);
 }
 
 
@@ -976,20 +976,20 @@ HELLOLIB_API const char *helloL_tolstring (hello_State *L, int idx, size_t *len)
 ** function gets the 'nup' elements at the top as upvalues.
 ** Returns with only the table at the stack.
 */
-HELLOLIB_API void helloL_setfuncs (hello_State *L, const helloL_Reg *l, int nup) {
-  helloL_checkstack(L, nup, "too many upvalues");
+MASKLIB_API void maskL_setfuncs (mask_State *L, const maskL_Reg *l, int nup) {
+  maskL_checkstack(L, nup, "too many upvalues");
   for (; l->name != NULL; l++) {  /* fill the table with given functions */
     if (l->func == NULL)  /* place holder? */
-      hello_pushboolean(L, 0);
+      mask_pushboolean(L, 0);
     else {
       int i;
       for (i = 0; i < nup; i++)  /* copy upvalues to the top */
-        hello_pushvalue(L, -nup);
-      hello_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
+        mask_pushvalue(L, -nup);
+      mask_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
     }
-    hello_setfield(L, -(nup + 2), l->name);
+    mask_setfield(L, -(nup + 2), l->name);
   }
-  hello_pop(L, nup);  /* remove upvalues */
+  mask_pop(L, nup);  /* remove upvalues */
 }
 
 
@@ -997,15 +997,15 @@ HELLOLIB_API void helloL_setfuncs (hello_State *L, const helloL_Reg *l, int nup)
 ** ensure that stack[idx][fname] has a table and push that table
 ** into the stack
 */
-HELLOLIB_API int helloL_getsubtable (hello_State *L, int idx, const char *fname) {
-  if (hello_getfield(L, idx, fname) == HELLO_TTABLE)
+MASKLIB_API int maskL_getsubtable (mask_State *L, int idx, const char *fname) {
+  if (mask_getfield(L, idx, fname) == MASK_TTABLE)
     return 1;  /* table already there */
   else {
-    hello_pop(L, 1);  /* remove previous result */
-    idx = hello_absindex(L, idx);
-    hello_newtable(L);
-    hello_pushvalue(L, -1);  /* copy to be left at top */
-    hello_setfield(L, idx, fname);  /* assign new table to field */
+    mask_pop(L, 1);  /* remove previous result */
+    idx = mask_absindex(L, idx);
+    mask_newtable(L);
+    mask_pushvalue(L, -1);  /* copy to be left at top */
+    mask_setfield(L, idx, fname);  /* assign new table to field */
     return 0;  /* false, because did not find table there */
   }
 }
@@ -1017,46 +1017,46 @@ HELLOLIB_API int helloL_getsubtable (hello_State *L, int idx, const char *fname)
 ** if 'glb' is true, also registers the result in the global table.
 ** Leaves resulting module on the top.
 */
-HELLOLIB_API void helloL_requiref (hello_State *L, const char *modname,
-                               hello_CFunction openf, int glb) {
-  helloL_getsubtable(L, HELLO_REGISTRYINDEX, HELLO_LOADED_TABLE);
-  hello_getfield(L, -1, modname);  /* LOADED[modname] */
-  if (!hello_toboolean(L, -1)) {  /* package not already loaded? */
-    hello_pop(L, 1);  /* remove field */
-    hello_pushcfunction(L, openf);
-    hello_pushstring(L, modname);  /* argument to open function */
-    hello_call(L, 1, 1);  /* call 'openf' to open module */
-    hello_pushvalue(L, -1);  /* make copy of module (call result) */
-    hello_setfield(L, -3, modname);  /* LOADED[modname] = module */
+MASKLIB_API void maskL_requiref (mask_State *L, const char *modname,
+                               mask_CFunction openf, int glb) {
+  maskL_getsubtable(L, MASK_REGISTRYINDEX, MASK_LOADED_TABLE);
+  mask_getfield(L, -1, modname);  /* LOADED[modname] */
+  if (!mask_toboolean(L, -1)) {  /* package not already loaded? */
+    mask_pop(L, 1);  /* remove field */
+    mask_pushcfunction(L, openf);
+    mask_pushstring(L, modname);  /* argument to open function */
+    mask_call(L, 1, 1);  /* call 'openf' to open module */
+    mask_pushvalue(L, -1);  /* make copy of module (call result) */
+    mask_setfield(L, -3, modname);  /* LOADED[modname] = module */
   }
-  hello_remove(L, -2);  /* remove LOADED table */
+  mask_remove(L, -2);  /* remove LOADED table */
   if (glb) {
-    hello_pushvalue(L, -1);  /* copy of module */
-    hello_setglobal(L, modname);  /* _G[modname] = module */
+    mask_pushvalue(L, -1);  /* copy of module */
+    mask_setglobal(L, modname);  /* _G[modname] = module */
   }
 }
 
 
-HELLOLIB_API void helloL_addgsub (helloL_Buffer *b, const char *s,
+MASKLIB_API void maskL_addgsub (maskL_Buffer *b, const char *s,
                                      const char *p, const char *r) {
   const char *wild;
   size_t l = strlen(p);
   while ((wild = strstr(s, p)) != NULL) {
-    helloL_addlstring(b, s, wild - s);  /* push prefix */
-    helloL_addstring(b, r);  /* push replacement in place of pattern */
+    maskL_addlstring(b, s, wild - s);  /* push prefix */
+    maskL_addstring(b, r);  /* push replacement in place of pattern */
     s = wild + l;  /* continue after 'p' */
   }
-  helloL_addstring(b, s);  /* push last suffix */
+  maskL_addstring(b, s);  /* push last suffix */
 }
 
 
-HELLOLIB_API const char *helloL_gsub (hello_State *L, const char *s,
+MASKLIB_API const char *maskL_gsub (mask_State *L, const char *s,
                                   const char *p, const char *r) {
-  helloL_Buffer b;
-  helloL_buffinit(L, &b);
-  helloL_addgsub(&b, s, p, r);
-  helloL_pushresult(&b);
-  return hello_tostring(L, -1);
+  maskL_Buffer b;
+  maskL_buffinit(L, &b);
+  maskL_addgsub(&b, s, p, r);
+  maskL_pushresult(&b);
+  return mask_tostring(L, -1);
 }
 
 
@@ -1071,12 +1071,12 @@ static void *l_alloc (void *ud, void *ptr, size_t osize, size_t nsize) {
 }
 
 
-static int panic (hello_State *L) {
-  const char *msg = hello_tostring(L, -1);
+static int panic (mask_State *L) {
+  const char *msg = mask_tostring(L, -1);
   if (msg == NULL) msg = "error object is not a string";
-  hello_writestringerror("PANIC: unprotected error in call to Hello API (%s)\n",
+  mask_writestringerror("PANIC: unprotected error in call to Mask API (%s)\n",
                         msg);
-  return 0;  /* return to Hello to abort */
+  return 0;  /* return to Mask to abort */
 }
 
 
@@ -1095,21 +1095,21 @@ static void warnfcont (void *ud, const char *message, int tocont);
 ** Check whether message is a control message. If so, execute the
 ** control or ignore it if unknown.
 */
-static int checkcontrol (hello_State *L, const char *message, int tocont) {
+static int checkcontrol (mask_State *L, const char *message, int tocont) {
   if (tocont || *(message++) != '@')  /* not a control message? */
     return 0;
   else {
     if (strcmp(message, "off") == 0)
-      hello_setwarnf(L, warnfoff, L);  /* turn warnings off */
+      mask_setwarnf(L, warnfoff, L);  /* turn warnings off */
     else if (strcmp(message, "on") == 0)
-      hello_setwarnf(L, warnfon, L);   /* turn warnings on */
+      mask_setwarnf(L, warnfon, L);   /* turn warnings on */
     return 1;  /* it was a control message */
   }
 }
 
 
 static void warnfoff (void *ud, const char *message, int tocont) {
-  checkcontrol((hello_State *)ud, message, tocont);
+  checkcontrol((mask_State *)ud, message, tocont);
 }
 
 
@@ -1118,40 +1118,40 @@ static void warnfoff (void *ud, const char *message, int tocont) {
 ** if needed and setting the next warn function.
 */
 static void warnfcont (void *ud, const char *message, int tocont) {
-  hello_State *L = (hello_State *)ud;
-  hello_writestringerror("%s", message);  /* write message */
+  mask_State *L = (mask_State *)ud;
+  mask_writestringerror("%s", message);  /* write message */
   if (tocont)  /* not the last part? */
-    hello_setwarnf(L, warnfcont, L);  /* to be continued */
+    mask_setwarnf(L, warnfcont, L);  /* to be continued */
   else {  /* last part */
-    hello_writestringerror("%s", "\n");  /* finish message with end-of-line */
-    hello_setwarnf(L, warnfon, L);  /* next call is a new message */
+    mask_writestringerror("%s", "\n");  /* finish message with end-of-line */
+    mask_setwarnf(L, warnfon, L);  /* next call is a new message */
   }
 }
 
 
 static void warnfon (void *ud, const char *message, int tocont) {
-  if (checkcontrol((hello_State *)ud, message, tocont))  /* control message? */
+  if (checkcontrol((mask_State *)ud, message, tocont))  /* control message? */
     return;  /* nothing else to be done */
   warnfcont(ud, message, tocont);  /* finish processing */
 }
 
 
-HELLOLIB_API hello_State *helloL_newstate (void) {
-  hello_State *L = hello_newstate(l_alloc, NULL);
+MASKLIB_API mask_State *maskL_newstate (void) {
+  mask_State *L = mask_newstate(l_alloc, NULL);
   if (l_likely(L)) {
-    hello_atpanic(L, &panic);
-    hello_setwarnf(L, warnfon, L);  /* unlike hello, warnings are enabled by default in hello */
+    mask_atpanic(L, &panic);
+    mask_setwarnf(L, warnfon, L);  /* unlike mask, warnings are enabled by default in mask */
   }
   return L;
 }
 
 
-HELLOLIB_API void helloL_checkversion_ (hello_State *L, hello_Number ver, size_t sz) {
-  hello_Number v = hello_version(L);
-  if (sz != HELLOL_NUMSIZES)  /* check numeric types */
-    helloL_error(L, "core and library have incompatible numeric types");
+MASKLIB_API void maskL_checkversion_ (mask_State *L, mask_Number ver, size_t sz) {
+  mask_Number v = mask_version(L);
+  if (sz != MASKL_NUMSIZES)  /* check numeric types */
+    maskL_error(L, "core and library have incompatible numeric types");
   else if (v != ver)
-    helloL_error(L, "version mismatch: app. needs %f, Hello core provides %f",
-                  (HELLOI_UACNUMBER)ver, (HELLOI_UACNUMBER)v);
+    maskL_error(L, "version mismatch: app. needs %f, Mask core provides %f",
+                  (MASKI_UACNUMBER)ver, (MASKI_UACNUMBER)v);
 }
 

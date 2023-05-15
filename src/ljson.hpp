@@ -1,6 +1,6 @@
 #pragma once
-#ifdef HELLO_USE_SOUP
-// https://github.com/calamity-inc/Soup-Hello-Bindings/blob/main/soup_hello_bindings.hpp
+#ifdef MASK_USE_SOUP
+// https://github.com/calamity-inc/Soup-Mask-Bindings/blob/main/soup_mask_bindings.hpp
 #include <soup/json.hpp>
 #include <soup/JsonInt.hpp>
 #include <soup/JsonBool.hpp>
@@ -11,133 +11,133 @@
 #include <soup/JsonString.hpp>
 #include <soup/UniquePtr.hpp>
 
-static bool isIndexBasedTable(hello_State* L, int i)
+static bool isIndexBasedTable(mask_State* L, int i)
 {
-	hello_pushvalue(L, i);
-	hello_pushnil(L);
+	mask_pushvalue(L, i);
+	mask_pushnil(L);
 	size_t k = 1;
-	for (; hello_next(L, -2); ++k)
+	for (; mask_next(L, -2); ++k)
 	{
-		hello_pushvalue(L, -2);
-		if (hello_type(L, -1) != HELLO_TNUMBER)
+		mask_pushvalue(L, -2);
+		if (mask_type(L, -1) != MASK_TNUMBER)
 		{
-			hello_pop(L, 4);
+			mask_pop(L, 4);
 			return false;
 		}
-		if (!hello_isinteger(L, -1))
+		if (!mask_isinteger(L, -1))
 		{
-			hello_pop(L, 4);
+			mask_pop(L, 4);
 			return false;
 		}
-		if (hello_tointeger(L, -1) != k)
+		if (mask_tointeger(L, -1) != k)
 		{
-			hello_pop(L, 4);
+			mask_pop(L, 4);
 			return false;
 		}
-		hello_pop(L, 2);
+		mask_pop(L, 2);
 	}
-	hello_pop(L, 1);
+	mask_pop(L, 1);
 	return k != 1; // say it's not an index based table if it's empty
 }
 
-static soup::UniquePtr<soup::JsonNode> checkJson(hello_State* L, int i)
+static soup::UniquePtr<soup::JsonNode> checkJson(mask_State* L, int i)
 {
-	auto type = hello_type(L, i);
-	if (type == HELLO_TBOOLEAN)
+	auto type = mask_type(L, i);
+	if (type == MASK_TBOOLEAN)
 	{
-		return soup::make_unique<soup::JsonBool>(hello_toboolean(L, i));
+		return soup::make_unique<soup::JsonBool>(mask_toboolean(L, i));
 	}
-	else if (type == HELLO_TNUMBER)
+	else if (type == MASK_TNUMBER)
 	{
-		if (hello_isinteger(L, i))
+		if (mask_isinteger(L, i))
 		{
-			return soup::make_unique<soup::JsonInt>(hello_tointeger(L, i));
+			return soup::make_unique<soup::JsonInt>(mask_tointeger(L, i));
 		}
 		else
 		{
-			return soup::make_unique<soup::JsonFloat>(hello_tonumber(L, i));
+			return soup::make_unique<soup::JsonFloat>(mask_tonumber(L, i));
 		}
 	}
-	else if (type == HELLO_TSTRING)
+	else if (type == MASK_TSTRING)
 	{
-		return soup::make_unique<soup::JsonString>(hello_tostring(L, i));
+		return soup::make_unique<soup::JsonString>(mask_tostring(L, i));
 	}
-	else if (type == HELLO_TTABLE)
+	else if (type == MASK_TTABLE)
 	{
 		if (isIndexBasedTable(L, i))
 		{
 			auto arr = soup::make_unique<soup::JsonArray>();
-			hello_pushvalue(L, i);
-			hello_pushnil(L);
-			while (hello_next(L, -2))
+			mask_pushvalue(L, i);
+			mask_pushnil(L);
+			while (mask_next(L, -2))
 			{
-				hello_pushvalue(L, -2);
+				mask_pushvalue(L, -2);
 				arr->children.emplace_back(checkJson(L, -2));
-				hello_pop(L, 2);
+				mask_pop(L, 2);
 			}
-			hello_pop(L, 1);
+			mask_pop(L, 1);
 			return arr;
 		}
 		else
 		{
 			auto obj = soup::make_unique<soup::JsonObject>();
-			hello_pushvalue(L, i);
-			hello_pushnil(L);
-			while (hello_next(L, -2))
+			mask_pushvalue(L, i);
+			mask_pushnil(L);
+			while (mask_next(L, -2))
 			{
-				hello_pushvalue(L, -2);
+				mask_pushvalue(L, -2);
 				obj->children.emplace_back(checkJson(L, -1), checkJson(L, -2));
-				hello_pop(L, 2);
+				mask_pop(L, 2);
 			}
-			hello_pop(L, 1);
+			mask_pop(L, 1);
 			return obj;
 		}
 	}
-	helloL_typeerror(L, i, "JSON-castable type");
+	maskL_typeerror(L, i, "JSON-castable type");
 }
 
-static void pushFromJson(hello_State* L, const soup::JsonNode& node)
+static void pushFromJson(mask_State* L, const soup::JsonNode& node)
 {
 	if (node.isBool())
 	{
-		hello_pushboolean(L, node.asBool().value);
+		mask_pushboolean(L, node.asBool().value);
 	}
 	else if (node.isInt())
 	{
-		hello_pushinteger(L, node.asInt().value);
+		mask_pushinteger(L, node.asInt().value);
 	}
 	else if (node.isFloat())
 	{
-		hello_pushnumber(L, node.asFloat().value);
+		mask_pushnumber(L, node.asFloat().value);
 	}
 	else if (node.isStr())
 	{
-		hello_pushstring(L, node.asStr().value);
+		mask_pushstring(L, node.asStr().value);
 	}
 	else if (node.isArr())
 	{
-		hello_newtable(L);
-		hello_Integer i = 1;
+		mask_newtable(L);
+		mask_Integer i = 1;
 		for (const auto& child : node.asArr().children)
 		{
-			hello_pushinteger(L, i++);
+			mask_pushinteger(L, i++);
 			pushFromJson(L, *child);
-			hello_settable(L, -3);
+			mask_settable(L, -3);
 		}
 	}
 	else if (node.isObj())
 	{
-		hello_newtable(L);
+		mask_newtable(L);
 		for (const auto& e : node.asObj().children)
 		{
 			pushFromJson(L, *e.first);
 			pushFromJson(L, *e.second);
-			hello_settable(L, -3);
+			mask_settable(L, -3);
 		}
 	}
 	else
 	{
-		hello_pushnil(L);
+		mask_pushnil(L);
 	}
 }
 

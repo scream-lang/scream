@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: lapi.h $
-** Auxiliary functions from Hello API
-** See Copyright Notice in hello.h
+** Auxiliary functions from Mask API
+** See Copyright Notice in mask.h
 */
 
 #include "llimits.h"
@@ -20,7 +20,7 @@
 ** increases its stack space ('L->ci->top').
 */
 #define adjustresults(L,nres) \
-    { if ((nres) <= HELLO_MULTRET && L->ci->top < L->top) L->ci->top = L->top; }
+    { if ((nres) <= MASK_MULTRET && L->ci->top < L->top) L->ci->top = L->top; }
 
 
 /* Ensure the stack has at least 'n' elements */
@@ -37,7 +37,7 @@
 ** variables to be closed, have an extra check.
 */
 
-#define hastocloseCfunc(n)	((n) < HELLO_MULTRET)
+#define hastocloseCfunc(n)	((n) < MASK_MULTRET)
 
 /* Map [-1, inf) (range of 'nresults') into (-inf, -2] */
 #define codeNresults(n)		(-(n) - 3)

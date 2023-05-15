@@ -1,18 +1,18 @@
 /*
 ** $Id: ldump.c $
-** save precompiled Hello chunks
-** See Copyright Notice in hello.h
+** save precompiled Mask chunks
+** See Copyright Notice in mask.h
 */
 
 #define ldump_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
 
 #include <stddef.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "lobject.h"
 #include "lstate.h"
@@ -20,8 +20,8 @@
 
 
 typedef struct {
-  hello_State *L;
-  hello_Writer writer;
+  mask_State *L;
+  mask_Writer writer;
   void *data;
   int strip;
   int status;
@@ -39,9 +39,9 @@ typedef struct {
 
 static void dumpBlock (DumpState *D, const void *b, size_t size) {
   if (D->status == 0 && size > 0) {
-    hello_unlock(D->L);
+    mask_unlock(D->L);
     D->status = (*D->writer)(D->L, b, size, D->data);
-    hello_lock(D->L);
+    mask_lock(D->L);
   }
 }
 
@@ -75,12 +75,12 @@ static void dumpInt (DumpState *D, int x) {
 }
 
 
-static void dumpNumber (DumpState *D, hello_Number x) {
+static void dumpNumber (DumpState *D, mask_Number x) {
   dumpVar(D, x);
 }
 
 
-static void dumpInteger (DumpState *D, hello_Integer x) {
+static void dumpInteger (DumpState *D, mask_Integer x) {
   dumpVar(D, x);
 }
 
@@ -114,18 +114,18 @@ static void dumpConstants (DumpState *D, const Proto *f) {
     int tt = ttypetag(o);
     dumpByte(D, tt);
     switch (tt) {
-      case HELLO_VNUMFLT:
+      case MASK_VNUMFLT:
         dumpNumber(D, fltvalue(o));
         break;
-      case HELLO_VNUMINT:
+      case MASK_VNUMINT:
         dumpInteger(D, ivalue(o));
         break;
-      case HELLO_VSHRSTR:
-      case HELLO_VLNGSTR:
+      case MASK_VSHRSTR:
+      case MASK_VLNGSTR:
         dumpString(D, tsvalue(o));
         break;
       default:
-        hello_assert(tt == HELLO_VNIL || tt == HELLO_VFALSE || tt == HELLO_VTRUE);
+        mask_assert(tt == MASK_VNIL || tt == MASK_VFALSE || tt == MASK_VTRUE);
     }
   }
 }
@@ -195,22 +195,22 @@ static void dumpFunction (DumpState *D, const Proto *f, TString *psource) {
 
 
 static void dumpHeader (DumpState *D) {
-  dumpLiteral(D, HELLO_SIGNATURE);
-  dumpByte(D, HELLOC_VERSION);
-  dumpByte(D, HELLOC_FORMAT);
-  dumpLiteral(D, HELLOC_DATA);
+  dumpLiteral(D, MASK_SIGNATURE);
+  dumpByte(D, MASKC_VERSION);
+  dumpByte(D, MASKC_FORMAT);
+  dumpLiteral(D, MASKC_DATA);
   dumpByte(D, sizeof(Instruction));
-  dumpByte(D, sizeof(hello_Integer));
-  dumpByte(D, sizeof(hello_Number));
-  dumpInteger(D, HELLOC_INT);
-  dumpNumber(D, HELLOC_NUM);
+  dumpByte(D, sizeof(mask_Integer));
+  dumpByte(D, sizeof(mask_Number));
+  dumpInteger(D, MASKC_INT);
+  dumpNumber(D, MASKC_NUM);
 }
 
 
 /*
-** dump Hello function as precompiled chunk
+** dump Mask function as precompiled chunk
 */
-int helloU_dump(hello_State *L, const Proto *f, hello_Writer w, void *data,
+int maskU_dump(mask_State *L, const Proto *f, mask_Writer w, void *data,
               int strip) {
   DumpState D;
   D.L = L;

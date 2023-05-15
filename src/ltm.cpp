@@ -1,18 +1,18 @@
 /*
 ** $Id: ltm.c $
 ** Tag methods
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #define ltm_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
 
 #include <string.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -27,7 +27,7 @@
 
 static const char udatatypename[] = "userdata";
 
-HELLOI_DDEF const char *const helloT_typenames_[HELLO_TOTALTYPES] = {
+MASKI_DDEF const char *const maskT_typenames_[MASK_TOTALTYPES] = {
   "no value",
   "nil", "boolean", udatatypename, "number",
   "string", "table", "function", udatatypename, "thread",
@@ -35,8 +35,8 @@ HELLOI_DDEF const char *const helloT_typenames_[HELLO_TOTALTYPES] = {
 };
 
 
-void helloT_init (hello_State *L) {
-  static const char *const helloT_eventname[] = {  /* ORDER TM */
+void maskT_init (mask_State *L) {
+  static const char *const maskT_eventname[] = {  /* ORDER TM */
     "__index", "__newindex",
     "__gc", "__mode", "__len", "__eq",
     "__add", "__sub", "__mul", "__mod", "__pow",
@@ -47,8 +47,8 @@ void helloT_init (hello_State *L) {
   };
   int i;
   for (i=0; i<TM_N; i++) {
-    G(L)->tmname[i] = helloS_new(L, helloT_eventname[i]);
-    helloC_fix(L, obj2gco(G(L)->tmname[i]));  /* never collect these names */
+    G(L)->tmname[i] = maskS_new(L, maskT_eventname[i]);
+    maskC_fix(L, obj2gco(G(L)->tmname[i]));  /* never collect these names */
   }
 }
 
@@ -57,9 +57,9 @@ void helloT_init (hello_State *L) {
 ** function to be used with macro "fasttm": optimized for absence of
 ** tag methods
 */
-const TValue *helloT_gettm (Table *events, TMS event, TString *ename) {
-  const TValue *tm = helloH_getshortstr(events, ename);
-  hello_assert(event <= TM_EQ);
+const TValue *maskT_gettm (Table *events, TMS event, TString *ename) {
+  const TValue *tm = maskH_getshortstr(events, ename);
+  mask_assert(event <= TM_EQ);
   if (notm(tm)) {  /* no tag method? */
     events->flags |= cast_byte(1u<<event);  /* cache this fact */
     return NULL;
@@ -68,19 +68,19 @@ const TValue *helloT_gettm (Table *events, TMS event, TString *ename) {
 }
 
 
-const TValue *helloT_gettmbyobj (hello_State *L, const TValue *o, TMS event) {
+const TValue *maskT_gettmbyobj (mask_State *L, const TValue *o, TMS event) {
   Table *mt;
   switch (ttype(o)) {
-    case HELLO_TTABLE:
+    case MASK_TTABLE:
       mt = hvalue(o)->metatable;
       break;
-    case HELLO_TUSERDATA:
+    case MASK_TUSERDATA:
       mt = uvalue(o)->metatable;
       break;
     default:
       mt = G(L)->mt[ttype(o)];
   }
-  return (mt ? helloH_getshortstr(mt, G(L)->tmname[event]) : &G(L)->nilvalue);
+  return (mt ? maskH_getshortstr(mt, G(L)->tmname[event]) : &G(L)->nilvalue);
 }
 
 
@@ -88,11 +88,11 @@ const TValue *helloT_gettmbyobj (hello_State *L, const TValue *o, TMS event) {
 ** Return the name of the type of an object. For tables and userdata
 ** with metatable, use their '__name' metafield, if present.
 */
-const char *helloT_objtypename (hello_State *L, const TValue *o) {
+const char *maskT_objtypename (mask_State *L, const TValue *o) {
   Table *mt;
   if ((ttistable(o) && (mt = hvalue(o)->metatable) != NULL) ||
       (ttisfulluserdata(o) && (mt = uvalue(o)->metatable) != NULL)) {
-    const TValue *name = helloH_getshortstr(mt, helloS_new(L, "__name"));
+    const TValue *name = maskH_getshortstr(mt, maskS_new(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */
       return getstr(tsvalue(name));  /* use it as type name */
   }
@@ -100,7 +100,7 @@ const char *helloT_objtypename (hello_State *L, const TValue *o) {
 }
 
 
-void helloT_callTM (hello_State *L, const TValue *f, const TValue *p1,
+void maskT_callTM (mask_State *L, const TValue *f, const TValue *p1,
                   const TValue *p2, const TValue *p3) {
   StkId func = L->top;
   setobj2s(L, func, f);  /* push function (assume EXTRA_STACK) */
@@ -108,15 +108,15 @@ void helloT_callTM (hello_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   setobj2s(L, func + 3, p3);  /* 3rd argument */
   L->top = func + 4;
-  /* metamethod may yield only when called from Hello code */
-  if (isHellocode(L->ci))
-    helloD_call(L, func, 0);
+  /* metamethod may yield only when called from Mask code */
+  if (isMaskcode(L->ci))
+    maskD_call(L, func, 0);
   else
-    helloD_callnoyield(L, func, 0);
+    maskD_callnoyield(L, func, 0);
 }
 
 
-void helloT_callTMres (hello_State *L, const TValue *f, const TValue *p1,
+void maskT_callTMres (mask_State *L, const TValue *f, const TValue *p1,
                      const TValue *p2, StkId res) {
   ptrdiff_t result = savestack(L, res);
   StkId func = L->top;
@@ -124,85 +124,85 @@ void helloT_callTMres (hello_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   L->top += 3;
-  /* metamethod may yield only when called from Hello code */
-  if (isHellocode(L->ci))
-    helloD_call(L, func, 1);
+  /* metamethod may yield only when called from Mask code */
+  if (isMaskcode(L->ci))
+    maskD_call(L, func, 1);
   else
-    helloD_callnoyield(L, func, 1);
+    maskD_callnoyield(L, func, 1);
   res = restorestack(L, result);
   setobjs2s(L, res, --L->top);  /* move result to its place */
 }
 
 
-static int callbinTM (hello_State *L, const TValue *p1, const TValue *p2,
+static int callbinTM (mask_State *L, const TValue *p1, const TValue *p2,
                       StkId res, TMS event) {
-  const TValue *tm = helloT_gettmbyobj(L, p1, event);  /* try first operand */
+  const TValue *tm = maskT_gettmbyobj(L, p1, event);  /* try first operand */
   if (notm(tm))
-    tm = helloT_gettmbyobj(L, p2, event);  /* try second operand */
+    tm = maskT_gettmbyobj(L, p2, event);  /* try second operand */
   if (notm(tm)) return 0;
-  helloT_callTMres(L, tm, p1, p2, res);
+  maskT_callTMres(L, tm, p1, p2, res);
   return 1;
 }
 
 
-void helloT_trybinTM (hello_State *L, const TValue *p1, const TValue *p2,
+void maskT_trybinTM (mask_State *L, const TValue *p1, const TValue *p2,
                     StkId res, TMS event) {
   if (l_unlikely(!callbinTM(L, p1, p2, res, event))) {
     switch (event) {
       case TM_BAND: case TM_BOR: case TM_BXOR:
       case TM_SHL: case TM_SHR: case TM_BNOT: {
         if (ttisnumber(p1) && ttisnumber(p2))
-          helloG_tointerror(L, p1, p2);
+          maskG_tointerror(L, p1, p2);
         else
-          helloG_opinterror(L, p1, p2, "perform bitwise operation on");
+          maskG_opinterror(L, p1, p2, "perform bitwise operation on");
       }
       /* calls never return, but to avoid warnings: *//* FALLTHROUGH */
       default:
-        helloG_opinterror(L, p1, p2, "perform arithmetic on");
+        maskG_opinterror(L, p1, p2, "perform arithmetic on");
     }
   }
 }
 
 
-void helloT_tryconcatTM (hello_State *L) {
+void maskT_tryconcatTM (mask_State *L) {
   StkId top = L->top;
   if (l_unlikely(!callbinTM(L, s2v(top - 2), s2v(top - 1), top - 2,
                                TM_CONCAT)))
-    helloG_concaterror(L, s2v(top - 2), s2v(top - 1));
+    maskG_concaterror(L, s2v(top - 2), s2v(top - 1));
 }
 
 
-void helloT_trybinassocTM (hello_State *L, const TValue *p1, const TValue *p2,
+void maskT_trybinassocTM (mask_State *L, const TValue *p1, const TValue *p2,
                                        int flip, StkId res, TMS event) {
   if (flip)
-    helloT_trybinTM(L, p2, p1, res, event);
+    maskT_trybinTM(L, p2, p1, res, event);
   else
-    helloT_trybinTM(L, p1, p2, res, event);
+    maskT_trybinTM(L, p1, p2, res, event);
 }
 
 
-void helloT_trybiniTM (hello_State *L, const TValue *p1, hello_Integer i2,
+void maskT_trybiniTM (mask_State *L, const TValue *p1, mask_Integer i2,
                                    int flip, StkId res, TMS event) {
   TValue aux;
   setivalue(&aux, i2);
-  helloT_trybinassocTM(L, p1, &aux, flip, res, event);
+  maskT_trybinassocTM(L, p1, &aux, flip, res, event);
 }
 
 
 /*
 ** Calls an order tag method.
-** For lessequal, HELLO_COMPAT_LT_LE keeps compatibility with old
+** For lessequal, MASK_COMPAT_LT_LE keeps compatibility with old
 ** behavior: if there is no '__le', try '__lt', based on l <= r iff
 ** !(r < l) (assuming a total order). If the metamethod yields during
 ** this substitution, the continuation has to know about it (to negate
 ** the result of r<l); bit CIST_LEQ in the call status keeps that
 ** information.
 */
-int helloT_callorderTM (hello_State *L, const TValue *p1, const TValue *p2,
+int maskT_callorderTM (mask_State *L, const TValue *p1, const TValue *p2,
                       TMS event) {
   if (callbinTM(L, p1, p2, L->top, event))  /* try original event */
     return !l_isfalse(s2v(L->top));
-#if defined(HELLO_COMPAT_LT_LE)
+#if defined(MASK_COMPAT_LT_LE)
   else if (event == TM_LE) {
       /* try '!(p2 < p1)' for '(p1 <= p2)' */
       L->ci->callstatus |= CIST_LEQ;  /* mark it is doing 'lt' for 'le' */
@@ -213,12 +213,12 @@ int helloT_callorderTM (hello_State *L, const TValue *p1, const TValue *p2,
       /* else error will remove this 'ci'; no need to clear mark */
   }
 #endif
-  helloG_ordererror(L, p1, p2);  /* no metamethod found */
+  maskG_ordererror(L, p1, p2);  /* no metamethod found */
   return 0;  /* to avoid warnings */
 }
 
 
-int helloT_callorderiTM (hello_State *L, const TValue *p1, int v2,
+int maskT_callorderiTM (mask_State *L, const TValue *p1, int v2,
                        int flip, int isfloat, TMS event) {
   TValue aux; const TValue *p2;
   if (isfloat) {
@@ -231,17 +231,17 @@ int helloT_callorderiTM (hello_State *L, const TValue *p1, int v2,
   }
   else
     p2 = &aux;
-  return helloT_callorderTM(L, p1, p2, event);
+  return maskT_callorderTM(L, p1, p2, event);
 }
 
 
-void helloT_adjustvarargs (hello_State *L, int nfixparams, CallInfo *ci,
+void maskT_adjustvarargs (mask_State *L, int nfixparams, CallInfo *ci,
                          const Proto *p) {
   int i;
   int actual = cast_int(L->top - ci->func) - 1;  /* number of arguments */
   int nextra = actual - nfixparams;  /* number of extra arguments */
   ci->u.l.nextraargs = nextra;
-  helloD_checkstack(L, p->maxstacksize + 1);
+  maskD_checkstack(L, p->maxstacksize + 1);
   /* copy function to the top of the stack */
   setobjs2s(L, L->top++, ci->func);
   /* move fixed parameters to the top of the stack */
@@ -251,11 +251,11 @@ void helloT_adjustvarargs (hello_State *L, int nfixparams, CallInfo *ci,
   }
   ci->func += actual + 1;
   ci->top += actual + 1;
-  hello_assert(L->top <= ci->top && ci->top <= L->stack_last);
+  mask_assert(L->top <= ci->top && ci->top <= L->stack_last);
 }
 
 
-void helloT_getvarargs (hello_State *L, CallInfo *ci, StkId where, int wanted) {
+void maskT_getvarargs (mask_State *L, CallInfo *ci, StkId where, int wanted) {
   int i;
   int nextra = ci->u.l.nextraargs;
   if (wanted < 0) {
