@@ -2,7 +2,7 @@
 /*
 ** $Id: ltm.h $
 ** Tag methods
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
 #include "lobject.h"
@@ -42,7 +42,7 @@ typedef enum {
 } TMS;
 
 
-static const char *const maskT_eventname[] = {  /* ORDER TM */
+static const char *const helloT_eventname[] = {  /* ORDER TM */
   "__index", "__newindex",
   "__gc", "__mode", "__len", "__eq",
   "__add", "__sub", "__mul", "__mod", "__pow",
@@ -70,39 +70,39 @@ static const char *const maskT_eventname[] = {  /* ORDER TM */
 
 
 #define gfasttm(g,et,e) ((et) == NULL ? NULL : \
-  ((et)->flags & (1u<<(e))) ? NULL : maskT_gettm(et, e, (g)->tmname[e]))
+  ((et)->flags & (1u<<(e))) ? NULL : helloT_gettm(et, e, (g)->tmname[e]))
 
 #define fasttm(l,et,e)	gfasttm(G(l), et, e)
 
-#define ttypename(x)	maskT_typenames_[(x) + 1]
+#define ttypename(x)	helloT_typenames_[(x) + 1]
 
-MASKI_DDEC(const char *const maskT_typenames_[MASK_TOTALTYPES];)
+HELLOI_DDEC(const char *const helloT_typenames_[HELLO_TOTALTYPES];)
 
 
-MASKI_FUNC const char *maskT_objtypename (mask_State *L, const TValue *o);
+HELLOI_FUNC const char *helloT_objtypename (hello_State *L, const TValue *o);
 
-MASKI_FUNC const TValue *maskT_gettm (Table *events, TMS event, TString *ename);
-MASKI_FUNC const TValue *maskT_gettmbyobj (mask_State *L, const TValue *o,
+HELLOI_FUNC const TValue *helloT_gettm (Table *events, TMS event, TString *ename);
+HELLOI_FUNC const TValue *helloT_gettmbyobj (hello_State *L, const TValue *o,
                                                        TMS event);
-MASKI_FUNC void maskT_init (mask_State *L);
+HELLOI_FUNC void helloT_init (hello_State *L);
 
-MASKI_FUNC void maskT_callTM (mask_State *L, const TValue *f, const TValue *p1,
+HELLOI_FUNC void helloT_callTM (hello_State *L, const TValue *f, const TValue *p1,
                             const TValue *p2, const TValue *p3);
-MASKI_FUNC void maskT_callTMres (mask_State *L, const TValue *f,
+HELLOI_FUNC void helloT_callTMres (hello_State *L, const TValue *f,
                             const TValue *p1, const TValue *p2, StkId p3);
-MASKI_FUNC void maskT_trybinTM (mask_State *L, const TValue *p1, const TValue *p2,
+HELLOI_FUNC void helloT_trybinTM (hello_State *L, const TValue *p1, const TValue *p2,
                               StkId res, TMS event);
-MASKI_FUNC void maskT_tryconcatTM (mask_State *L);
-MASKI_FUNC void maskT_trybinassocTM (mask_State *L, const TValue *p1,
+HELLOI_FUNC void helloT_tryconcatTM (hello_State *L);
+HELLOI_FUNC void helloT_trybinassocTM (hello_State *L, const TValue *p1,
        const TValue *p2, int inv, StkId res, TMS event);
-MASKI_FUNC void maskT_trybiniTM (mask_State *L, const TValue *p1, mask_Integer i2,
+HELLOI_FUNC void helloT_trybiniTM (hello_State *L, const TValue *p1, hello_Integer i2,
                                int inv, StkId res, TMS event);
-MASKI_FUNC int maskT_callorderTM (mask_State *L, const TValue *p1,
+HELLOI_FUNC int helloT_callorderTM (hello_State *L, const TValue *p1,
                                 const TValue *p2, TMS event);
-MASKI_FUNC int maskT_callorderiTM (mask_State *L, const TValue *p1, int v2,
+HELLOI_FUNC int helloT_callorderiTM (hello_State *L, const TValue *p1, int v2,
                                  int inv, int isfloat, TMS event);
 
-MASKI_FUNC void maskT_adjustvarargs (mask_State *L, int nfixparams,
+HELLOI_FUNC void helloT_adjustvarargs (hello_State *L, int nfixparams,
                                    struct CallInfo *ci, const Proto *p);
-MASKI_FUNC void maskT_getvarargs (mask_State *L, struct CallInfo *ci,
+HELLOI_FUNC void helloT_getvarargs (hello_State *L, struct CallInfo *ci,
                                               StkId where, int wanted);

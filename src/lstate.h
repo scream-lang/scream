@@ -2,10 +2,10 @@
 /*
 ** $Id: lstate.h $
 ** Global State
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
-#include "mask.h"
+#include "hello.h"
 
 #include "lobject.h"
 #include "ltm.h"
@@ -13,7 +13,7 @@
 
 
 /*
-** Some notes about garbage-collected objects: All objects in Mask must
+** Some notes about garbage-collected objects: All objects in Hello must
 ** be kept somehow accessible until being freed, so all objects always
 ** belong to one (and only one) of these lists, using field 'next' of
 ** the 'CommonHeader' for the link:
@@ -39,7 +39,7 @@
 ** 'finobjrold' -> NULL: really old       """".
 **
 ** All lists can contain elements older than their main ages, due
-** to 'maskC_checkfinalizer' and 'udata2finalize', which move
+** to 'helloC_checkfinalizer' and 'udata2finalize', which move
 ** objects between the normal lists and the "marked for finalization"
 ** lists. Moreover, barriers can age young objects in young lists as
 ** OLD0, which then become OLD1. However, a list never contains
@@ -112,11 +112,11 @@
 
 
 
-struct mask_longjmp;  /* defined in ldo.c */
+struct hello_longjmp;  /* defined in ldo.c */
 
 
 /*
-** Atomic type (relative to signals) to better ensure that 'mask_sethook'
+** Atomic type (relative to signals) to better ensure that 'hello_sethook'
 ** is thread safe
 */
 #if !defined(l_signalT)
@@ -135,7 +135,7 @@ struct mask_longjmp;  /* defined in ldo.c */
 #define EXTRA_STACK   5
 
 
-#define BASIC_STACK_SIZE        (2*MASK_MINSTACK)
+#define BASIC_STACK_SIZE        (2*HELLO_MINSTACK)
 
 #define stacksize(th)	cast_int((th)->stack_last - (th)->stack)
 
@@ -155,7 +155,7 @@ typedef struct stringtable {
 /*
 ** Information about a call.
 ** About union 'u':
-** - field 'l' is used only for Mask functions;
+** - field 'l' is used only for Hello functions;
 ** - field 'c' is used only for C functions.
 ** About union 'u2':
 ** - field 'funcidx' is used only by C functions while doing a
@@ -172,15 +172,15 @@ typedef struct CallInfo {
   StkId	top;  /* top for this function */
   struct CallInfo *previous, *next;  /* dynamic call link */
   union {
-    struct {  /* only for Mask functions */
+    struct {  /* only for Hello functions */
       const Instruction *savedpc;
       volatile l_signalT trap;
       int nextraargs;  /* # of extra arguments in vararg functions */
     } l;
     struct {  /* only for C functions */
-      mask_KFunction k;  /* continuation in case of yields */
+      hello_KFunction k;  /* continuation in case of yields */
       ptrdiff_t old_errfunc;
-      mask_KContext ctx;  /* context info. in case of yields */
+      hello_KContext ctx;  /* context info. in case of yields */
     } c;
   } u;
   union {
@@ -202,7 +202,7 @@ typedef struct CallInfo {
 */
 #define CIST_OAH	(1<<0)	/* original value of 'allowhook' */
 #define CIST_C		(1<<1)	/* call is running a C function */
-#define CIST_FRESH	(1<<2)	/* call is on a fresh "maskV_execute" frame */
+#define CIST_FRESH	(1<<2)	/* call is on a fresh "helloV_execute" frame */
 #define CIST_HOOKED	(1<<3)	/* call is running a debug hook */
 #define CIST_YPCALL	(1<<4)	/* doing a yieldable protected call */
 #define CIST_TAIL	(1<<5)	/* call was tail called */
@@ -212,7 +212,7 @@ typedef struct CallInfo {
 #define CIST_CLSRET	(1<<9)  /* function is closing tbc variables */
 /* Bits 10-12 are used for CIST_RECST (see below) */
 #define CIST_RECST	10
-#if defined(MASK_COMPAT_LT_LE)
+#if defined(HELLO_COMPAT_LT_LE)
 #define CIST_LEQ	(1<<13)  /* using __lt for __le */
 #endif
 
@@ -220,7 +220,7 @@ typedef struct CallInfo {
 /*
 ** Field CIST_RECST stores the "recover status", used to keep the error
 ** status while closing to-be-closed variables in coroutines, so that
-** Mask can correctly resume after an yield from a __close method called
+** Hello can correctly resume after an yield from a __close method called
 ** because of an error.  (Three bits are enough for error status.)
 */
 #define getcistrecst(ci)     (((ci)->callstatus >> CIST_RECST) & 7)
@@ -230,11 +230,11 @@ typedef struct CallInfo {
                                                   | ((st) << CIST_RECST)))
 
 
-/* active function is a Mask function */
-#define isMask(ci)	(!((ci)->callstatus & CIST_C))
+/* active function is a Hello function */
+#define isHello(ci)	(!((ci)->callstatus & CIST_C))
 
-/* call is running Mask code (not a hook) */
-#define isMaskcode(ci)	(!((ci)->callstatus & (CIST_C | CIST_HOOKED)))
+/* call is running Hello code (not a hook) */
+#define isHellocode(ci)	(!((ci)->callstatus & (CIST_C | CIST_HOOKED)))
 
 /* assume that CIST_OAH has offset 0 and that 'v' is strictly 0/1 */
 #define setoah(st,v)	((st) = ((st) & ~CIST_OAH) | (v))
@@ -245,7 +245,7 @@ typedef struct CallInfo {
 ** 'global state', shared by all threads of this state
 */
 typedef struct global_State {
-  mask_Alloc frealloc;  /* function to reallocate memory */
+  hello_Alloc frealloc;  /* function to reallocate memory */
   void *ud;         /* auxiliary data to 'frealloc' */
   l_mem totalbytes;  /* number of bytes currently allocated - GCdebt */
   l_mem GCdebt;  /* bytes allocated not yet compensated by the collector */
@@ -284,14 +284,14 @@ typedef struct global_State {
   GCObject *finobjsur;  /* list of survival objects with finalizers */
   GCObject *finobjold1;  /* list of old1 objects with finalizers */
   GCObject *finobjrold;  /* list of really old objects with finalizers */
-  struct mask_State *twups;  /* list of threads with open upvalues */
-  mask_CFunction panic;  /* to be called in unprotected errors */
-  struct mask_State *mainthread;
+  struct hello_State *twups;  /* list of threads with open upvalues */
+  hello_CFunction panic;  /* to be called in unprotected errors */
+  struct hello_State *mainthread;
   TString *memerrmsg;  /* message for memory-allocation errors */
   TString *tmname[TM_N];  /* array with tag-method names */
-  struct Table *mt[MASK_NUMTAGS];  /* metatables for basic types */
+  struct Table *mt[HELLO_NUMTAGS];  /* metatables for basic types */
   TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
-  mask_WarnFunction warnf;  /* warning function */
+  hello_WarnFunction warnf;  /* warning function */
   void *ud_warn;         /* auxiliary data to 'warnf' */
 
   void* user_data;       /* a pointer to data you, the user, would like to specify */
@@ -299,27 +299,27 @@ typedef struct global_State {
 
 class Registry {
 public:
-  mask_State *state;
+  hello_State *state;
 
   // Fetch a string value from the internal registry.
   inline const char *GetStrKey(const char *key) {
-    if (mask_getfield(state, MASK_REGISTRYINDEX, key)) {
-      return mask_tostring(state, -1);
+    if (hello_getfield(state, HELLO_REGISTRYINDEX, key)) {
+      return hello_tostring(state, -1);
     } else return nullptr;
   }
 
   // Fetch a boolean value from the internal registry.
   inline bool GetBoolKey(const char *key) {
-    return mask_getfield(state, MASK_REGISTRYINDEX, key);
+    return hello_getfield(state, HELLO_REGISTRYINDEX, key);
   }
 
-  Registry(mask_State *L) : state(L) {}
+  Registry(hello_State *L) : state(L) {}
 };
 
 /*
 ** 'per thread' state
 */
-struct mask_State {
+struct hello_State {
   CommonHeader;
   lu_byte status;
   lu_byte allowhook;
@@ -332,10 +332,10 @@ struct mask_State {
   UpVal *openupval;  /* list of open upvalues in this stack */
   StkId tbclist;  /* list of to-be-closed variables */
   GCObject *gclist;
-  struct mask_State *twups;  /* list of threads with open upvalues */
-  struct mask_longjmp *errorJmp;  /* current error recover point */
-  CallInfo base_ci;  /* CallInfo for first level (C calling Mask) */
-  volatile mask_Hook hook;
+  struct hello_State *twups;  /* list of threads with open upvalues */
+  struct hello_longjmp *errorJmp;  /* current error recover point */
+  CallInfo base_ci;  /* CallInfo for first level (C calling Hello) */
+  volatile hello_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
   l_uint32 nCcalls;  /* number of nested (non-yieldable | C)  calls */
   int oldpc;  /* last pc traced */
@@ -343,7 +343,7 @@ struct mask_State {
   int hookcount;
   volatile l_signalT hookmask;
 
-  // Mask registry abstration.
+  // Hello registry abstration.
   [[nodiscard]] inline Registry GetReg() {
       return this;
   }
@@ -375,7 +375,7 @@ union GCUnion {
   union Closure cl;
   struct Table h;
   struct Proto p;
-  struct mask_State th;  /* thread */
+  struct hello_State th;  /* thread */
   struct UpVal upv;
 };
 
@@ -389,35 +389,35 @@ union GCUnion {
 
 /* macros to convert a GCObject into a specific value */
 #define gco2ts(o)  \
-    check_exp(novariant((o)->tt) == MASK_TSTRING, &((cast_u(o))->ts))
-#define gco2u(o)  check_exp((o)->tt == MASK_VUSERDATA, &((cast_u(o))->u))
-#define gco2lcl(o)  check_exp((o)->tt == MASK_VLCL, &((cast_u(o))->cl.l))
-#define gco2ccl(o)  check_exp((o)->tt == MASK_VCCL, &((cast_u(o))->cl.c))
+    check_exp(novariant((o)->tt) == HELLO_TSTRING, &((cast_u(o))->ts))
+#define gco2u(o)  check_exp((o)->tt == HELLO_VUSERDATA, &((cast_u(o))->u))
+#define gco2lcl(o)  check_exp((o)->tt == HELLO_VLCL, &((cast_u(o))->cl.l))
+#define gco2ccl(o)  check_exp((o)->tt == HELLO_VCCL, &((cast_u(o))->cl.c))
 #define gco2cl(o)  \
-    check_exp(novariant((o)->tt) == MASK_TFUNCTION, &((cast_u(o))->cl))
-#define gco2t(o)  check_exp((o)->tt == MASK_VTABLE, &((cast_u(o))->h))
-#define gco2p(o)  check_exp((o)->tt == MASK_VPROTO, &((cast_u(o))->p))
-#define gco2th(o)  check_exp((o)->tt == MASK_VTHREAD, &((cast_u(o))->th))
-#define gco2upv(o)	check_exp((o)->tt == MASK_VUPVAL, &((cast_u(o))->upv))
+    check_exp(novariant((o)->tt) == HELLO_TFUNCTION, &((cast_u(o))->cl))
+#define gco2t(o)  check_exp((o)->tt == HELLO_VTABLE, &((cast_u(o))->h))
+#define gco2p(o)  check_exp((o)->tt == HELLO_VPROTO, &((cast_u(o))->p))
+#define gco2th(o)  check_exp((o)->tt == HELLO_VTHREAD, &((cast_u(o))->th))
+#define gco2upv(o)	check_exp((o)->tt == HELLO_VUPVAL, &((cast_u(o))->upv))
 
 
 /*
-** macro to convert a Mask object into a GCObject
-** (The access to 'tt' tries to ensure that 'v' is actually a Mask object.)
+** macro to convert a Hello object into a GCObject
+** (The access to 'tt' tries to ensure that 'v' is actually a Hello object.)
 */
-#define obj2gco(v)	check_exp((v)->tt >= MASK_TSTRING, &(cast_u(v)->gc))
+#define obj2gco(v)	check_exp((v)->tt >= HELLO_TSTRING, &(cast_u(v)->gc))
 
 
 /* actual number of total bytes allocated */
 #define gettotalbytes(g)	cast(lu_mem, (g)->totalbytes + (g)->GCdebt)
 
-MASKI_FUNC void maskE_setdebt (global_State *g, l_mem debt);
-MASKI_FUNC void maskE_freethread (mask_State *L, mask_State *L1);
-MASKI_FUNC CallInfo *maskE_extendCI (mask_State *L);
-MASKI_FUNC void maskE_freeCI (mask_State *L);
-MASKI_FUNC void maskE_shrinkCI (mask_State *L);
-MASKI_FUNC void maskE_checkcstack (mask_State *L);
-MASKI_FUNC void maskE_incCstack (mask_State *L);
-MASKI_FUNC void maskE_warning (mask_State *L, const char *msg, int tocont);
-MASKI_FUNC void maskE_warnerror (mask_State *L, const char *where);
-MASKI_FUNC int maskE_resetthread (mask_State *L, int status);
+HELLOI_FUNC void helloE_setdebt (global_State *g, l_mem debt);
+HELLOI_FUNC void helloE_freethread (hello_State *L, hello_State *L1);
+HELLOI_FUNC CallInfo *helloE_extendCI (hello_State *L);
+HELLOI_FUNC void helloE_freeCI (hello_State *L);
+HELLOI_FUNC void helloE_shrinkCI (hello_State *L);
+HELLOI_FUNC void helloE_checkcstack (hello_State *L);
+HELLOI_FUNC void helloE_incCstack (hello_State *L);
+HELLOI_FUNC void helloE_warning (hello_State *L, const char *msg, int tocont);
+HELLOI_FUNC void helloE_warnerror (hello_State *L, const char *where);
+HELLOI_FUNC int helloE_resetthread (hello_State *L, int status);

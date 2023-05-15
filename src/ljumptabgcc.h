@@ -1,7 +1,7 @@
 /*
 ** $Id: ljumptab.h $
-** Jump Table for the Mask interpreter
-** See Copyright Notice in mask.h
+** Jump Table for the Hello interpreter
+** See Copyright Notice in hello.h
 */
 
 

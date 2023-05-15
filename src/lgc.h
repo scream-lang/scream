@@ -2,7 +2,7 @@
 /*
 ** $Id: lgc.h $
 ** Garbage Collector
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
 #include "lobject.h"
@@ -96,7 +96,7 @@
 #define nw2black(x)  \
     check_exp(!iswhite(x), l_setbit((x)->marked, BLACKBIT))
 
-#define maskC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
+#define helloC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
 
 
 /* object age in generational mode */
@@ -119,11 +119,11 @@
 
 
 /* Default Values for GC parameters */
-#define MASKI_GENMAJORMUL         100
-#define MASKI_GENMINORMUL         20
+#define HELLOI_GENMAJORMUL         100
+#define HELLOI_GENMINORMUL         20
 
 /* wait memory to double before starting new cycle */
-#define MASKI_GCPAUSE    200
+#define HELLOI_GCPAUSE    200
 
 /*
 ** some gc parameters are stored divided by 4 to allow a maximum value
@@ -132,10 +132,10 @@
 #define getgcparam(p)	((p) * 4)
 #define setgcparam(p,v)	((p) = (v) / 4)
 
-#define MASKI_GCMUL      100
+#define HELLOI_GCMUL      100
 
 /* how much to allocate before next GC step (log2) */
-#define MASKI_GCSTEPSIZE 13      /* 8 KB */
+#define HELLOI_GCSTEPSIZE 13      /* 8 KB */
 
 
 /*
@@ -151,7 +151,7 @@
 */
 #define GCSTPUSR	1  /* bit true when GC stopped by user */
 #define GCSTPGC		2  /* bit true when GC stopped by itself */
-#define GCSTPCLS	4  /* bit true when closing Mask state */
+#define GCSTPCLS	4  /* bit true when closing Hello state */
 #define gcrunning(g)	((g)->gcstp == 0)
 
 
@@ -161,33 +161,33 @@
 ** 'condchangemem' is used only for heavy tests (forcing a full
 ** GC cycle on every opportunity)
 */
-#define maskC_condGC(L,pre,pos) \
-    { if (G(L)->GCdebt > 0) { pre; maskC_step(L); pos;}; \
+#define helloC_condGC(L,pre,pos) \
+    { if (G(L)->GCdebt > 0) { pre; helloC_step(L); pos;}; \
       condchangemem(L,pre,pos); }
 
 /* more often than not, 'pre'/'pos' are empty */
-#define maskC_checkGC(L)		maskC_condGC(L,(void)0,(void)0)
+#define helloC_checkGC(L)		helloC_condGC(L,(void)0,(void)0)
 
 
-#define maskC_barrier(L,p,v) (  \
+#define helloC_barrier(L,p,v) (  \
     (iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ?  \
-    maskC_barrier_(L,obj2gco(p),gcvalue(v)) : cast_void(0))
+    helloC_barrier_(L,obj2gco(p),gcvalue(v)) : cast_void(0))
 
-#define maskC_barrierback(L,p,v) (  \
+#define helloC_barrierback(L,p,v) (  \
     (iscollectable(v) && isblack(p) && iswhite(gcvalue(v))) ? \
-    maskC_barrierback_(L,p) : cast_void(0))
+    helloC_barrierback_(L,p) : cast_void(0))
 
-#define maskC_objbarrier(L,p,o) (  \
+#define helloC_objbarrier(L,p,o) (  \
     (isblack(p) && iswhite(o)) ? \
-    maskC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
+    helloC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
 
-MASKI_FUNC void maskC_fix (mask_State *L, GCObject *o);
-MASKI_FUNC void maskC_freeallobjects (mask_State *L);
-MASKI_FUNC void maskC_step (mask_State *L);
-MASKI_FUNC void maskC_runtilstate (mask_State *L, int statesmask);
-MASKI_FUNC void maskC_fullgc (mask_State *L, int isemergency);
-MASKI_FUNC GCObject *maskC_newobj (mask_State *L, int tt, size_t sz);
-MASKI_FUNC void maskC_barrier_ (mask_State *L, GCObject *o, GCObject *v);
-MASKI_FUNC void maskC_barrierback_ (mask_State *L, GCObject *o);
-MASKI_FUNC void maskC_checkfinalizer (mask_State *L, GCObject *o, Table *mt);
-MASKI_FUNC void maskC_changemode (mask_State *L, int newmode);
+HELLOI_FUNC void helloC_fix (hello_State *L, GCObject *o);
+HELLOI_FUNC void helloC_freeallobjects (hello_State *L);
+HELLOI_FUNC void helloC_step (hello_State *L);
+HELLOI_FUNC void helloC_runtilstate (hello_State *L, int statesmask);
+HELLOI_FUNC void helloC_fullgc (hello_State *L, int isemergency);
+HELLOI_FUNC GCObject *helloC_newobj (hello_State *L, int tt, size_t sz);
+HELLOI_FUNC void helloC_barrier_ (hello_State *L, GCObject *o, GCObject *v);
+HELLOI_FUNC void helloC_barrierback_ (hello_State *L, GCObject *o);
+HELLOI_FUNC void helloC_checkfinalizer (hello_State *L, GCObject *o, Table *mt);
+HELLOI_FUNC void helloC_changemode (hello_State *L, int newmode);

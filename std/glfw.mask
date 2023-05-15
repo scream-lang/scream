@@ -1,7 +1,7 @@
 local ffi = require 'ffi'
 local bit = require 'bit'
 
-local mod = {} -- Mask module namespace
+local mod = {} -- Hello module namespace
 local aux = {} -- Auxiliary utils
 
 local args -- Arguments for binding

@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: ldo.h $
-** Stack and Call structure of Mask
-** See Copyright Notice in mask.h
+** Stack and Call structure of Hello
+** See Copyright Notice in hello.h
 */
 
 #include "lobject.h"
@@ -19,13 +19,13 @@
 ** 'condmovestack' is used in heavy tests to force a stack reallocation
 ** at every check.
 */
-#define maskD_checkstackaux(L,n,pre,pos)  \
+#define helloD_checkstackaux(L,n,pre,pos)  \
 	if (l_unlikely(L->stack_last - L->top <= (n))) \
-	  { pre; maskD_growstack(L, n, 1); pos; } \
+	  { pre; helloD_growstack(L, n, 1); pos; } \
         else { condmovestack(L,pre,pos); }
 
 /* In general, 'pre'/'pos' are empty (nothing to save) */
-#define maskD_checkstack(L,n)	maskD_checkstackaux(L,n,(void)0,(void)0)
+#define helloD_checkstack(L,n)	helloD_checkstackaux(L,n,(void)0,(void)0)
 
 
 
@@ -35,47 +35,47 @@
 
 /* macro to check stack size, preserving 'p' */
 #define checkstackp(L,n,p)  \
-  maskD_checkstackaux(L, n, \
+  helloD_checkstackaux(L, n, \
     ptrdiff_t t__ = savestack(L, p),  /* save 'p' */ \
     p = restorestack(L, t__))  /* 'pos' part: restore 'p' */
 
 
 /* macro to check stack size and GC, preserving 'p' */
 #define checkstackGCp(L,n,p)  \
-  maskD_checkstackaux(L, n, \
+  helloD_checkstackaux(L, n, \
     ptrdiff_t t__ = savestack(L, p);  /* save 'p' */ \
-    maskC_checkGC(L),  /* stack grow uses memory */ \
+    helloC_checkGC(L),  /* stack grow uses memory */ \
     p = restorestack(L, t__))  /* 'pos' part: restore 'p' */
 
 
 /* macro to check stack size and GC */
 #define checkstackGC(L,fsize)  \
-	maskD_checkstackaux(L, (fsize), maskC_checkGC(L), (void)0)
+	helloD_checkstackaux(L, (fsize), helloC_checkGC(L), (void)0)
 
 
 /* type of protected functions, to be ran by 'runprotected' */
-typedef void (*Pfunc) (mask_State *L, void *ud);
+typedef void (*Pfunc) (hello_State *L, void *ud);
 
-MASKI_FUNC void maskD_seterrorobj (mask_State *L, int errcode, StkId oldtop);
-MASKI_FUNC int maskD_protectedparser (mask_State *L, ZIO *z, const char *name,
+HELLOI_FUNC void helloD_seterrorobj (hello_State *L, int errcode, StkId oldtop);
+HELLOI_FUNC int helloD_protectedparser (hello_State *L, ZIO *z, const char *name,
                                                   const char *mode);
-MASKI_FUNC void maskD_hook (mask_State *L, int event, int line,
+HELLOI_FUNC void helloD_hook (hello_State *L, int event, int line,
                                         int fTransfer, int nTransfer);
-MASKI_FUNC void maskD_hookcall (mask_State *L, CallInfo *ci);
-MASKI_FUNC int maskD_pretailcall (mask_State *L, CallInfo *ci, StkId func,
+HELLOI_FUNC void helloD_hookcall (hello_State *L, CallInfo *ci);
+HELLOI_FUNC int helloD_pretailcall (hello_State *L, CallInfo *ci, StkId func,
                                               int narg1, int delta);
-MASKI_FUNC CallInfo *maskD_precall (mask_State *L, StkId func, int nResults);
-MASKI_FUNC void maskD_call (mask_State *L, StkId func, int nResults);
-MASKI_FUNC void maskD_callnoyield (mask_State *L, StkId func, int nResults);
-MASKI_FUNC StkId maskD_tryfuncTM (mask_State *L, StkId func);
-MASKI_FUNC int maskD_closeprotected (mask_State *L, ptrdiff_t level, int status);
-MASKI_FUNC int maskD_pcall (mask_State *L, Pfunc func, void *u,
+HELLOI_FUNC CallInfo *helloD_precall (hello_State *L, StkId func, int nResults);
+HELLOI_FUNC void helloD_call (hello_State *L, StkId func, int nResults);
+HELLOI_FUNC void helloD_callnoyield (hello_State *L, StkId func, int nResults);
+HELLOI_FUNC StkId helloD_tryfuncTM (hello_State *L, StkId func);
+HELLOI_FUNC int helloD_closeprotected (hello_State *L, ptrdiff_t level, int status);
+HELLOI_FUNC int helloD_pcall (hello_State *L, Pfunc func, void *u,
                                         ptrdiff_t oldtop, ptrdiff_t ef);
-MASKI_FUNC void maskD_poscall (mask_State *L, CallInfo *ci, int nres);
-MASKI_FUNC int maskD_reallocstack (mask_State *L, int newsize, int raiseerror);
-MASKI_FUNC int maskD_growstack (mask_State *L, int n, int raiseerror);
-MASKI_FUNC void maskD_shrinkstack (mask_State *L);
-MASKI_FUNC void maskD_inctop (mask_State *L);
+HELLOI_FUNC void helloD_poscall (hello_State *L, CallInfo *ci, int nres);
+HELLOI_FUNC int helloD_reallocstack (hello_State *L, int newsize, int raiseerror);
+HELLOI_FUNC int helloD_growstack (hello_State *L, int n, int raiseerror);
+HELLOI_FUNC void helloD_shrinkstack (hello_State *L);
+HELLOI_FUNC void helloD_inctop (hello_State *L);
 
-[[noreturn]] MASKI_FUNC void maskD_throw (mask_State *L, int errcode);
-MASKI_FUNC int maskD_rawrunprotected (mask_State *L, Pfunc f, void *ud);
+[[noreturn]] HELLOI_FUNC void helloD_throw (hello_State *L, int errcode);
+HELLOI_FUNC int helloD_rawrunprotected (hello_State *L, Pfunc f, void *ud);

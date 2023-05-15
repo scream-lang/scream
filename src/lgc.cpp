@@ -1,11 +1,11 @@
 /*
 ** $Id: lgc.c $
 ** Garbage Collector
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
 #define lgc_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
@@ -13,7 +13,7 @@
 #include <string.h>
 
 
-#include "mask.h"
+#include "hello.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -69,7 +69,7 @@
 
 /* macro to erase all color bits then set only the current white bit */
 #define makewhite(g,x)	\
-  (x->marked = cast_byte((x->marked & ~maskcolors) | maskC_white(g)))
+  (x->marked = cast_byte((x->marked & ~maskcolors) | helloC_white(g)))
 
 /* make an object gray (neither white nor black) */
 #define set2gray(x)	resetbits(x->marked, maskcolors)
@@ -105,8 +105,8 @@
 #define markobjectN(g,t)	{ if (t) markobject(g,t); }
 
 static void reallymarkobject (global_State *g, GCObject *o);
-static lu_mem atomic (mask_State *L);
-static void entersweep (mask_State *L);
+static lu_mem atomic (hello_State *L);
+static void entersweep (hello_State *L);
 
 
 /*
@@ -124,17 +124,17 @@ static void entersweep (mask_State *L);
 
 static GCObject **getgclist (GCObject *o) {
   switch (o->tt) {
-    case MASK_VTABLE: return &gco2t(o)->gclist;
-    case MASK_VLCL: return &gco2lcl(o)->gclist;
-    case MASK_VCCL: return &gco2ccl(o)->gclist;
-    case MASK_VTHREAD: return &gco2th(o)->gclist;
-    case MASK_VPROTO: return &gco2p(o)->gclist;
-    case MASK_VUSERDATA: {
+    case HELLO_VTABLE: return &gco2t(o)->gclist;
+    case HELLO_VLCL: return &gco2lcl(o)->gclist;
+    case HELLO_VCCL: return &gco2ccl(o)->gclist;
+    case HELLO_VTHREAD: return &gco2th(o)->gclist;
+    case HELLO_VPROTO: return &gco2p(o)->gclist;
+    case HELLO_VUSERDATA: {
       Udata *u = gco2u(o);
-      mask_assert(u->nuvalue > 0);
+      hello_assert(u->nuvalue > 0);
       return &u->gclist;
     }
-    default: mask_assert(0); return 0;
+    default: hello_assert(0); return 0;
   }
 }
 
@@ -146,7 +146,7 @@ static GCObject **getgclist (GCObject *o) {
 #define linkgclist(o,p)	linkgclist_(obj2gco(o), &(o)->gclist, &(p))
 
 static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
-  mask_assert(!isgray(o));  /* cannot be in a gray list */
+  hello_assert(!isgray(o));  /* cannot be in a gray list */
   *pnext = *list;
   *list = o;
   set2gray(o);  /* now it is */
@@ -169,7 +169,7 @@ static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
 ** logically empty.
 */
 static void clearkey (Node *n) {
-  mask_assert(isempty(gval(n)));
+  hello_assert(isempty(gval(n)));
   if (keyiscollectable(n))
     setdeadkey(n);  /* unused key; remove it */
 }
@@ -184,7 +184,7 @@ static void clearkey (Node *n) {
 */
 static int iscleared (global_State *g, const GCObject *o) {
   if (o == NULL) return 0;  /* non-collectable value */
-  else if (novariant(o->tt) == MASK_TSTRING) {
+  else if (novariant(o->tt) == HELLO_TSTRING) {
     markobject(g, o);  /* strings are 'values', so are never weak */
     return 0;
   }
@@ -205,18 +205,18 @@ static int iscleared (global_State *g, const GCObject *o) {
 ** be done is generational mode, as its sweep does not distinguish
 ** whites from deads.)
 */
-void maskC_barrier_ (mask_State *L, GCObject *o, GCObject *v) {
+void helloC_barrier_ (hello_State *L, GCObject *o, GCObject *v) {
   global_State *g = G(L);
-  mask_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
+  hello_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
   if (keepinvariant(g)) {  /* must keep invariant? */
     reallymarkobject(g, v);  /* restore invariant */
     if (isold(o)) {
-      mask_assert(!isold(v));  /* white object could not be old */
+      hello_assert(!isold(v));  /* white object could not be old */
       setage(v, G_OLD0);  /* restore generational invariant */
     }
   }
   else {  /* sweep phase */
-    mask_assert(issweepphase(g));
+    hello_assert(issweepphase(g));
     if (g->gckind == KGC_INC)  /* incremental mode? */
       makewhite(g, o);  /* mark 'o' as white to avoid other barriers */
   }
@@ -227,10 +227,10 @@ void maskC_barrier_ (mask_State *L, GCObject *o, GCObject *v) {
 ** barrier that moves collector backward, that is, mark the black object
 ** pointing to a white object as gray again.
 */
-void maskC_barrierback_ (mask_State *L, GCObject *o) {
+void helloC_barrierback_ (hello_State *L, GCObject *o) {
   global_State *g = G(L);
-  mask_assert(isblack(o) && !isdead(g, o));
-  mask_assert((g->gckind == KGC_GEN) == (isold(o) && getage(o) != G_TOUCHED1));
+  hello_assert(isblack(o) && !isdead(g, o));
+  hello_assert((g->gckind == KGC_GEN) == (isold(o) && getage(o) != G_TOUCHED1));
   if (getage(o) == G_TOUCHED2)  /* already in gray list? */
     set2gray(o);  /* make it gray to become touched1 */
   else  /* link it in 'grayagain' and paint it gray */
@@ -240,9 +240,9 @@ void maskC_barrierback_ (mask_State *L, GCObject *o) {
 }
 
 
-void maskC_fix (mask_State *L, GCObject *o) {
+void helloC_fix (hello_State *L, GCObject *o) {
   global_State *g = G(L);
-  mask_assert(g->allgc == o);  /* object must be 1st in 'allgc' list! */
+  hello_assert(g->allgc == o);  /* object must be 1st in 'allgc' list! */
   set2gray(o);  /* they will be gray forever */
   setage(o, G_OLD);  /* and old forever */
   g->allgc = o->next;  /* remove object from 'allgc' list */
@@ -255,10 +255,10 @@ void maskC_fix (mask_State *L, GCObject *o) {
 ** create a new collectable object (with given type and size) and link
 ** it to 'allgc' list.
 */
-GCObject *maskC_newobj (mask_State *L, int tt, size_t sz) {
+GCObject *helloC_newobj (hello_State *L, int tt, size_t sz) {
   global_State *g = G(L);
-  GCObject *o = cast(GCObject *, maskM_newobject(L, novariant(tt), sz));
-  o->marked = maskC_white(g);
+  GCObject *o = cast(GCObject *, helloM_newobject(L, novariant(tt), sz));
+  o->marked = helloC_white(g);
   o->tt = tt;
   o->next = g->allgc;
   g->allgc = o;
@@ -290,12 +290,12 @@ GCObject *maskC_newobj (mask_State *L, int tt, size_t sz) {
 */
 static void reallymarkobject (global_State *g, GCObject *o) {
   switch (o->tt) {
-    case MASK_VSHRSTR:
-    case MASK_VLNGSTR: {
+    case HELLO_VSHRSTR:
+    case HELLO_VLNGSTR: {
       set2black(o);  /* nothing to visit */
       break;
     }
-    case MASK_VUPVAL: {
+    case HELLO_VUPVAL: {
       UpVal *uv = gco2upv(o);
       if (upisopen(uv))
         set2gray(uv);  /* open upvalues are kept gray */
@@ -304,7 +304,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       markvalue(g, uv->v);  /* mark its content */
       break;
     }
-    case MASK_VUSERDATA: {
+    case HELLO_VUSERDATA: {
       Udata *u = gco2u(o);
       if (u->nuvalue == 0) {  /* no user values? */
         markobjectN(g, u->metatable);  /* mark its metatable */
@@ -313,12 +313,12 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       }
       /* else... */
     }  /* FALLTHROUGH */
-    case MASK_VLCL: case MASK_VCCL: case MASK_VTABLE:
-    case MASK_VTHREAD: case MASK_VPROTO: {
+    case HELLO_VLCL: case HELLO_VCCL: case HELLO_VTABLE:
+    case HELLO_VTHREAD: case HELLO_VPROTO: {
       linkobjgclist(o, g->gray);  /* to be visited later */
       break;
     }
-    default: mask_assert(0); break;
+    default: hello_assert(0); break;
   }
 }
 
@@ -328,7 +328,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
 */
 static void markmt (global_State *g) {
   int i;
-  for (i=0; i < MASK_NUMTAGS; i++)
+  for (i=0; i < HELLO_NUMTAGS; i++)
     markobjectN(g, g->mt[i]);
 }
 
@@ -359,8 +359,8 @@ static lu_mem markbeingfnz (global_State *g) {
 ** upvalue later, it will be linked in the list again.)
 */
 static int remarkupvals (global_State *g) {
-  mask_State *thread;
-  mask_State **p = &g->twups;
+  hello_State *thread;
+  hello_State **p = &g->twups;
   int work = 0;  /* estimate of how much work was done here */
   while ((thread = *p) != NULL) {
     work++;
@@ -368,14 +368,14 @@ static int remarkupvals (global_State *g) {
       p = &thread->twups;  /* keep marked thread with upvalues in the list */
     else {  /* thread is not marked or without upvalues */
       UpVal *uv;
-      mask_assert(!isold(thread) || thread->openupval == NULL);
+      hello_assert(!isold(thread) || thread->openupval == NULL);
       *p = thread->twups;  /* remove thread from the list */
       thread->twups = thread;  /* mark that it is out of list */
       for (uv = thread->openupval; uv != NULL; uv = uv->u.open.next) {
-        mask_assert(getage(uv) <= getage(thread));
+        hello_assert(getage(uv) <= getage(thread));
         work++;
         if (!iswhite(uv)) {  /* upvalue already visited? */
-          mask_assert(upisopen(uv) && isgray(uv));
+          hello_assert(upisopen(uv) && isgray(uv));
           markvalue(g, uv->v);  /* mark its value */
         }
       }
@@ -422,7 +422,7 @@ static void restartcollection (global_State *g) {
 ** 'correctgraylist' does when it finds a TOUCHED2 object.)
 */
 static void genlink (global_State *g, GCObject *o) {
-  mask_assert(isblack(o));
+  hello_assert(isblack(o));
   if (getage(o) == G_TOUCHED1) {  /* touched in this cycle? */
     linkobjgclist(o, g->grayagain);  /* link it back in 'grayagain' */
   }  /* everything else do not need to be linked back */
@@ -446,7 +446,7 @@ static void traverseweakvalue (global_State *g, Table *h) {
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
     else {
-      mask_assert(!keyisnil(n));
+      hello_assert(!keyisnil(n));
       markkey(g, n);
       if (!hasclears && iscleared(g, gcvalueN(gval(n))))  /* a white value? */
         hasclears = 1;  /* table will have to be cleared */
@@ -476,7 +476,7 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
   int hasclears = 0;  /* true if table has white keys */
   int hasww = 0;  /* true if table has entry "white-key -> white-value" */
   unsigned int i;
-  unsigned int asize = maskH_realasize(h);
+  unsigned int asize = helloH_realasize(h);
   unsigned int nsize = sizenode(h);
   /* traverse array part */
   for (i = 0; i < asize; i++) {
@@ -517,14 +517,14 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
 static void traversestrongtable (global_State *g, Table *h) {
   Node *n, *limit = gnodelast(h);
   unsigned int i;
-  unsigned int asize = maskH_realasize(h);
+  unsigned int asize = helloH_realasize(h);
   for (i = 0; i < asize; i++)  /* traverse array part */
     markvalue(g, &h->array[i]);
   for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
     else {
-      mask_assert(!keyisnil(n));
+      hello_assert(!keyisnil(n));
       markkey(g, n);
       markvalue(g, gval(n));
     }
@@ -592,7 +592,7 @@ static int traverseCclosure (global_State *g, CClosure *cl) {
 }
 
 /*
-** Traverse a Mask closure, marking its prototype and its upvalues.
+** Traverse a Hello closure, marking its prototype and its upvalues.
 ** (Both can be NULL while closure is being created.)
 */
 static int traverseLclosure (global_State *g, LClosure *cl) {
@@ -618,14 +618,14 @@ static int traverseLclosure (global_State *g, LClosure *cl) {
 ** (which can only happen in generational mode) or if the traverse is in
 ** the propagate phase (which can only happen in incremental mode).
 */
-static int traversethread (global_State *g, mask_State *th) {
+static int traversethread (global_State *g, hello_State *th) {
   UpVal *uv;
   StkId o = th->stack;
   if (isold(th) || g->gcstate == GCSpropagate)
     linkgclist(th, g->grayagain);  /* insert into 'grayagain' list */
   if (o == NULL)
     return 1;  /* stack not completely built yet */
-  mask_assert(g->gcstate == GCSatomic ||
+  hello_assert(g->gcstate == GCSatomic ||
              th->openupval == NULL || isintwups(th));
   for (; o < th->top; o++)  /* mark live elements in the stack */
     markvalue(g, s2v(o));
@@ -641,7 +641,7 @@ static int traversethread (global_State *g, mask_State *th) {
     }
   }
   else if (!g->gcemergency)
-    maskD_shrinkstack(th); /* do not change stack in emergency cycle */
+    helloD_shrinkstack(th); /* do not change stack in emergency cycle */
   return 1 + stacksize(th);
 }
 
@@ -654,13 +654,13 @@ static lu_mem propagatemark (global_State *g) {
   nw2black(o);
   g->gray = *getgclist(o);  /* remove from 'gray' list */
   switch (o->tt) {
-    case MASK_VTABLE: return traversetable(g, gco2t(o));
-    case MASK_VUSERDATA: return traverseudata(g, gco2u(o));
-    case MASK_VLCL: return traverseLclosure(g, gco2lcl(o));
-    case MASK_VCCL: return traverseCclosure(g, gco2ccl(o));
-    case MASK_VPROTO: return traverseproto(g, gco2p(o));
-    case MASK_VTHREAD: return traversethread(g, gco2th(o));
-    default: mask_assert(0); return 0;
+    case HELLO_VTABLE: return traversetable(g, gco2t(o));
+    case HELLO_VUSERDATA: return traverseudata(g, gco2u(o));
+    case HELLO_VLCL: return traverseLclosure(g, gco2lcl(o));
+    case HELLO_VCCL: return traverseCclosure(g, gco2ccl(o));
+    case HELLO_VPROTO: return traverseproto(g, gco2p(o));
+    case HELLO_VTHREAD: return traversethread(g, gco2th(o));
+    default: hello_assert(0); return 0;
   }
 }
 
@@ -738,7 +738,7 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
     Table *h = gco2t(l);
     Node *n, *limit = gnodelast(h);
     unsigned int i;
-    unsigned int asize = maskH_realasize(h);
+    unsigned int asize = helloH_realasize(h);
     for (i = 0; i < asize; i++) {
       TValue *o = &h->array[i];
       if (iscleared(g, gcvalueN(o)))  /* value was collected? */
@@ -754,54 +754,54 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
 }
 
 
-static void freeupval (mask_State *L, UpVal *uv) {
+static void freeupval (hello_State *L, UpVal *uv) {
   if (upisopen(uv))
-    maskF_unlinkupval(uv);
-  maskM_free(L, uv);
+    helloF_unlinkupval(uv);
+  helloM_free(L, uv);
 }
 
 
-static void freeobj (mask_State *L, GCObject *o) {
+static void freeobj (hello_State *L, GCObject *o) {
   switch (o->tt) {
-    case MASK_VPROTO:
-      maskF_freeproto(L, gco2p(o));
+    case HELLO_VPROTO:
+      helloF_freeproto(L, gco2p(o));
       break;
-    case MASK_VUPVAL:
+    case HELLO_VUPVAL:
       freeupval(L, gco2upv(o));
       break;
-    case MASK_VLCL: {
+    case HELLO_VLCL: {
       LClosure *cl = gco2lcl(o);
-      maskM_freemem(L, cl, sizeLclosure(cl->nupvalues));
+      helloM_freemem(L, cl, sizeLclosure(cl->nupvalues));
       break;
     }
-    case MASK_VCCL: {
+    case HELLO_VCCL: {
       CClosure *cl = gco2ccl(o);
-      maskM_freemem(L, cl, sizeCclosure(cl->nupvalues));
+      helloM_freemem(L, cl, sizeCclosure(cl->nupvalues));
       break;
     }
-    case MASK_VTABLE:
-      maskH_free(L, gco2t(o));
+    case HELLO_VTABLE:
+      helloH_free(L, gco2t(o));
       break;
-    case MASK_VTHREAD:
-      maskE_freethread(L, gco2th(o));
+    case HELLO_VTHREAD:
+      helloE_freethread(L, gco2th(o));
       break;
-    case MASK_VUSERDATA: {
+    case HELLO_VUSERDATA: {
       Udata *u = gco2u(o);
-      maskM_freemem(L, o, sizeudata(u->nuvalue, u->len));
+      helloM_freemem(L, o, sizeudata(u->nuvalue, u->len));
       break;
     }
-    case MASK_VSHRSTR: {
+    case HELLO_VSHRSTR: {
       TString *ts = gco2ts(o);
-      maskS_remove(L, ts);  /* remove it from hash table */
-      maskM_freemem(L, ts, sizelstring(ts->shrlen));
+      helloS_remove(L, ts);  /* remove it from hash table */
+      helloM_freemem(L, ts, sizelstring(ts->shrlen));
       break;
     }
-    case MASK_VLNGSTR: {
+    case HELLO_VLNGSTR: {
       TString *ts = gco2ts(o);
-      maskM_freemem(L, ts, sizelstring(ts->u.lnglen));
+      helloM_freemem(L, ts, sizelstring(ts->u.lnglen));
       break;
     }
-    default: mask_assert(0);
+    default: hello_assert(0);
   }
 }
 
@@ -813,12 +813,12 @@ static void freeobj (mask_State *L, GCObject *o) {
 ** collection cycle. Return where to continue the traversal or NULL if
 ** list is finished. ('*countout' gets the number of elements traversed.)
 */
-static GCObject **sweeplist (mask_State *L, GCObject **p, int countin,
+static GCObject **sweeplist (hello_State *L, GCObject **p, int countin,
                              int *countout) {
   global_State *g = G(L);
   int ow = otherwhite(g);
   int i;
-  int white = maskC_white(g);  /* current white */
+  int white = helloC_white(g);  /* current white */
   for (i = 0; *p != NULL && i < countin; i++) {
     GCObject *curr = *p;
     int marked = curr->marked;
@@ -840,7 +840,7 @@ static GCObject **sweeplist (mask_State *L, GCObject **p, int countin,
 /*
 ** sweep a list until a live object (or end of list)
 */
-static GCObject **sweeptolive (mask_State *L, GCObject **p) {
+static GCObject **sweeptolive (hello_State *L, GCObject **p) {
   GCObject **old = p;
   do {
     p = sweeplist(L, p, 1, NULL);
@@ -860,11 +860,11 @@ static GCObject **sweeptolive (mask_State *L, GCObject **p) {
 /*
 ** If possible, shrink string table.
 */
-static void checkSizes (mask_State *L, global_State *g) {
+static void checkSizes (hello_State *L, global_State *g) {
   if (!g->gcemergency) {
     if (g->strt.nuse < g->strt.size / 4) {  /* string table too big? */
       l_mem olddebt = g->GCdebt;
-      maskS_resize(L, g->strt.size / 2);
+      helloS_resize(L, g->strt.size / 2);
       g->GCestimate += g->GCdebt - olddebt;  /* correct estimate */
     }
   }
@@ -877,7 +877,7 @@ static void checkSizes (mask_State *L, global_State *g) {
 */
 static GCObject *udata2finalize (global_State *g) {
   GCObject *o = g->tobefnz;  /* get first element */
-  mask_assert(tofinalize(o));
+  hello_assert(tofinalize(o));
   g->tobefnz = o->next;  /* remove it from 'tobefnz' list */
   o->next = g->allgc;  /* return it to 'allgc' list */
   g->allgc = o;
@@ -890,19 +890,19 @@ static GCObject *udata2finalize (global_State *g) {
 }
 
 
-static void dothecall (mask_State *L, void *ud) {
+static void dothecall (hello_State *L, void *ud) {
   UNUSED(ud);
-  maskD_callnoyield(L, L->top - 2, 0);
+  helloD_callnoyield(L, L->top - 2, 0);
 }
 
 
-static void GCTM (mask_State *L) {
+static void GCTM (hello_State *L) {
   global_State *g = G(L);
   const TValue *tm;
   TValue v;
-  mask_assert(!g->gcemergency);
+  hello_assert(!g->gcemergency);
   setgcovalue(L, &v, udata2finalize(g));
-  tm = maskT_gettmbyobj(L, &v, TM_GC);
+  tm = helloT_gettmbyobj(L, &v, TM_GC);
   if (!notm(tm)) {  /* is there a finalizer? */
     int status;
     lu_byte oldah = L->allowhook;
@@ -912,12 +912,12 @@ static void GCTM (mask_State *L) {
     setobj2s(L, L->top++, tm);  /* push finalizer... */
     setobj2s(L, L->top++, &v);  /* ... and its argument */
     L->ci->callstatus |= CIST_FIN;  /* will run a finalizer */
-    status = maskD_pcall(L, dothecall, NULL, savestack(L, L->top - 2), 0);
+    status = helloD_pcall(L, dothecall, NULL, savestack(L, L->top - 2), 0);
     L->ci->callstatus &= ~CIST_FIN;  /* not running a finalizer anymore */
     L->allowhook = oldah;  /* restore hooks */
     g->gcstp = oldgcstp;  /* restore state */
-    if (l_unlikely(status != MASK_OK)) {  /* error while running __gc? */
-      maskE_warnerror(L, "__gc");
+    if (l_unlikely(status != HELLO_OK)) {  /* error while running __gc? */
+      helloE_warnerror(L, "__gc");
       L->top--;  /* pops error object */
     }
   }
@@ -927,7 +927,7 @@ static void GCTM (mask_State *L) {
 /*
 ** Call a few finalizers
 */
-static int runafewfinalizers (mask_State *L, int n) {
+static int runafewfinalizers (hello_State *L, int n) {
   global_State *g = G(L);
   int i;
   for (i = 0; i < n && g->tobefnz; i++)
@@ -939,7 +939,7 @@ static int runafewfinalizers (mask_State *L, int n) {
 /*
 ** call all pending finalizers
 */
-static void callallpendingfinalizers (mask_State *L) {
+static void callallpendingfinalizers (hello_State *L) {
   global_State *g = G(L);
   while (g->tobefnz)
     GCTM(L);
@@ -968,7 +968,7 @@ static void separatetobefnz (global_State *g, int all) {
   GCObject **p = &g->finobj;
   GCObject **lastnext = findlast(&g->tobefnz);
   while ((curr = *p) != g->finobjold1) {  /* traverse all finalizable objects */
-    mask_assert(tofinalize(curr));
+    hello_assert(tofinalize(curr));
     if (!(iswhite(curr) || all))  /* not being collected? */
       p = &curr->next;  /* don't bother with it */
     else {
@@ -1008,7 +1008,7 @@ static void correctpointers (global_State *g, GCObject *o) {
 ** if object 'o' has a finalizer, remove it from 'allgc' list (must
 ** search the list to find it) and link it in 'finobj' list.
 */
-void maskC_checkfinalizer (mask_State *L, GCObject *o, Table *mt) {
+void helloC_checkfinalizer (hello_State *L, GCObject *o, Table *mt) {
   global_State *g = G(L);
   if (tofinalize(o) ||                 /* obj. is already marked... */
       gfasttm(g, mt, TM_GC) == NULL ||    /* or has no finalizer... */
@@ -1046,19 +1046,19 @@ void maskC_checkfinalizer (mask_State *L, GCObject *o, Table *mt) {
 ** Set the "time" to wait before starting a new GC cycle; cycle will
 ** start when memory use hits the threshold of ('estimate' * pause /
 ** PAUSEADJ). (Division by 'estimate' should be OK: it cannot be zero,
-** because Mask cannot even start with less than PAUSEADJ bytes).
+** because Hello cannot even start with less than PAUSEADJ bytes).
 */
 static void setpause (global_State *g) {
   l_mem threshold, debt;
   int pause = getgcparam(g->gcpause);
   l_mem estimate = g->GCestimate / PAUSEADJ;  /* adjust 'estimate' */
-  mask_assert(estimate > 0);
+  hello_assert(estimate > 0);
   threshold = (pause < MAX_LMEM / estimate)  /* overflow? */
             ? estimate * pause  /* no overflow */
             : MAX_LMEM;  /* overflow; truncate to maximum */
   debt = gettotalbytes(g) - threshold;
   if (debt > 0) debt = 0;
-  maskE_setdebt(g, debt);
+  helloE_setdebt(g, debt);
 }
 
 
@@ -1068,22 +1068,22 @@ static void setpause (global_State *g) {
 ** are now old---must be in a gray list. Everything else is not in a
 ** gray list. Open upvalues are also kept gray.
 */
-static void sweep2old (mask_State *L, GCObject **p) {
+static void sweep2old (hello_State *L, GCObject **p) {
   GCObject *curr;
   global_State *g = G(L);
   while ((curr = *p) != NULL) {
     if (iswhite(curr)) {  /* is 'curr' dead? */
-      mask_assert(isdead(g, curr));
+      hello_assert(isdead(g, curr));
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* all surviving objects become old */
       setage(curr, G_OLD);
-      if (curr->tt == MASK_VTHREAD) {  /* threads must be watched */
-        mask_State *th = gco2th(curr);
+      if (curr->tt == HELLO_VTHREAD) {  /* threads must be watched */
+        hello_State *th = gco2th(curr);
         linkgclist(th, g->grayagain);  /* insert into 'grayagain' list */
       }
-      else if (curr->tt == MASK_VUPVAL && upisopen(gco2upv(curr)))
+      else if (curr->tt == HELLO_VUPVAL && upisopen(gco2upv(curr)))
         set2gray(curr);  /* open upvalues are always gray */
       else  /* everything else is black */
         nw2black(curr);
@@ -1104,7 +1104,7 @@ static void sweep2old (mask_State *L, GCObject **p) {
 ** here.  They will all be advanced in 'correctgraylist'. That function
 ** will also remove objects turned white here from any gray list.
 */
-static GCObject **sweepgen (mask_State *L, global_State *g, GCObject **p,
+static GCObject **sweepgen (hello_State *L, global_State *g, GCObject **p,
                             GCObject *limit, GCObject **pfirstold1) {
   static const lu_byte nextage[] = {
     G_SURVIVAL,  /* from G_NEW */
@@ -1115,11 +1115,11 @@ static GCObject **sweepgen (mask_State *L, global_State *g, GCObject **p,
     G_TOUCHED1,  /* from G_TOUCHED1 (do not change) */
     G_TOUCHED2   /* from G_TOUCHED2 (do not change) */
   };
-  int white = maskC_white(g);
+  int white = helloC_white(g);
   GCObject *curr;
   while ((curr = *p) != limit) {
     if (iswhite(curr)) {  /* is 'curr' dead? */
-      mask_assert(!isold(curr) && isdead(g, curr));
+      hello_assert(!isold(curr) && isdead(g, curr));
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
@@ -1146,7 +1146,7 @@ static GCObject **sweepgen (mask_State *L, global_State *g, GCObject **p,
 ** except for fixed strings (which are always old).
 */
 static void whitelist (global_State *g, GCObject *p) {
-  int white = maskC_white(g);
+  int white = helloC_white(g);
   for (; p != NULL; p = p->next)
     p->marked = cast_byte((p->marked & ~maskgcbits) | white);
 }
@@ -1168,17 +1168,17 @@ static GCObject **correctgraylist (GCObject **p) {
     if (iswhite(curr))
       goto remove;  /* remove all white objects */
     else if (getage(curr) == G_TOUCHED1) {  /* touched in this cycle? */
-      mask_assert(isgray(curr));
+      hello_assert(isgray(curr));
       nw2black(curr);  /* make it black, for next barrier */
       changeage(curr, G_TOUCHED1, G_TOUCHED2);
       goto remain;  /* keep it in the list and go to next element */
     }
-    else if (curr->tt == MASK_VTHREAD) {
-      mask_assert(isgray(curr));
+    else if (curr->tt == HELLO_VTHREAD) {
+      hello_assert(isgray(curr));
       goto remain;  /* keep non-white threads on the list */
     }
     else {  /* everything else is removed */
-      mask_assert(isold(curr));  /* young objects should be white here */
+      hello_assert(isold(curr));  /* young objects should be white here */
       if (getage(curr) == G_TOUCHED2)  /* advance from TOUCHED2... */
         changeage(curr, G_TOUCHED2, G_OLD);  /* ... to OLD */
       nw2black(curr);  /* make object black (to be removed) */
@@ -1214,7 +1214,7 @@ static void markold (global_State *g, GCObject *from, GCObject *to) {
   GCObject *p;
   for (p = from; p != to; p = p->next) {
     if (getage(p) == G_OLD1) {
-      mask_assert(!iswhite(p));
+      hello_assert(!iswhite(p));
       changeage(p, G_OLD1, G_OLD);  /* now they are old */
       if (isblack(p))
         reallymarkobject(g, p);
@@ -1226,7 +1226,7 @@ static void markold (global_State *g, GCObject *from, GCObject *to) {
 /*
 ** Finish a young-generation collection.
 */
-static void finishgencycle (mask_State *L, global_State *g) {
+static void finishgencycle (hello_State *L, global_State *g) {
   correctgraylists(g);
   checkSizes(L, g);
   g->gcstate = GCSpropagate;  /* skip restart */
@@ -1240,10 +1240,10 @@ static void finishgencycle (mask_State *L, global_State *g) {
 ** atomic step. Then, sweep all lists and advance pointers. Finally,
 ** finish the collection.
 */
-static void youngcollection (mask_State *L, global_State *g) {
+static void youngcollection (hello_State *L, global_State *g) {
   GCObject **psurvival;  /* to point to first non-dead survival object */
   GCObject *dummy;  /* dummy out parameter to 'sweepgen' */
-  mask_assert(g->gcstate == GCSpropagate);
+  hello_assert(g->gcstate == GCSpropagate);
   if (g->firstold1) {  /* are there regular OLD1 objects? */
     markold(g, g->firstold1, g->reallyold);  /* mark them */
     g->firstold1 = NULL;  /* no more OLD1 objects (for now) */
@@ -1281,7 +1281,7 @@ static void youngcollection (mask_State *L, global_State *g) {
 ** surviving objects to old. Threads go back to 'grayagain'; everything
 ** else is turned black (not in any gray list).
 */
-static void atomic2gen (mask_State *L, global_State *g) {
+static void atomic2gen (hello_State *L, global_State *g) {
   cleargraylists(g);
   /* sweep all elements making them old */
   g->gcstate = GCSswpallgc;
@@ -1308,7 +1308,7 @@ static void atomic2gen (mask_State *L, global_State *g) {
 ** memory grows 'genminormul'%.
 */
 static void setminordebt (global_State *g) {
-  maskE_setdebt(g, -(cast(l_mem, (gettotalbytes(g) / 100)) * g->genminormul));
+  helloE_setdebt(g, -(cast(l_mem, (gettotalbytes(g) / 100)) * g->genminormul));
 }
 
 
@@ -1318,10 +1318,10 @@ static void setminordebt (global_State *g) {
 ** are cleared. Then, turn all objects into old and finishes the
 ** collection.
 */
-static lu_mem entergen (mask_State *L, global_State *g) {
+static lu_mem entergen (hello_State *L, global_State *g) {
   lu_mem numobjs;
-  maskC_runtilstate(L, bitmask(GCSpause));  /* prepare to start a new cycle */
-  maskC_runtilstate(L, bitmask(GCSpropagate));  /* start new cycle */
+  helloC_runtilstate(L, bitmask(GCSpause));  /* prepare to start a new cycle */
+  helloC_runtilstate(L, bitmask(GCSpropagate));  /* start new cycle */
   numobjs = atomic(L);  /* propagates all and then do the atomic stuff */
   atomic2gen(L, g);
   setminordebt(g);  /* set debt assuming next cycle will be minor */
@@ -1349,7 +1349,7 @@ static void enterinc (global_State *g) {
 /*
 ** Change collector mode to 'newmode'.
 */
-void maskC_changemode (mask_State *L, int newmode) {
+void helloC_changemode (hello_State *L, int newmode) {
   global_State *g = G(L);
   if (newmode != g->gckind) {
     if (newmode == KGC_GEN)  /* entering generational mode? */
@@ -1364,7 +1364,7 @@ void maskC_changemode (mask_State *L, int newmode) {
 /*
 ** Does a full collection in generational mode.
 */
-static lu_mem fullgen (mask_State *L, global_State *g) {
+static lu_mem fullgen (hello_State *L, global_State *g) {
   enterinc(g);
   return entergen(L, g);
 }
@@ -1391,12 +1391,12 @@ static lu_mem fullgen (mask_State *L, global_State *g) {
 ** field 'g->lastatomic' keeps this count from the last collection.
 ** ('g->lastatomic != 0' also means that the last collection was bad.)
 */
-static void stepgenfull (mask_State *L, global_State *g) {
+static void stepgenfull (hello_State *L, global_State *g) {
   lu_mem newatomic;  /* count of traversed objects */
   lu_mem lastatomic = g->lastatomic;  /* count from last collection */
   if (g->gckind == KGC_GEN)  /* still in generational mode? */
     enterinc(g);  /* enter incremental mode */
-  maskC_runtilstate(L, bitmask(GCSpropagate));  /* start new cycle */
+  helloC_runtilstate(L, bitmask(GCSpropagate));  /* start new cycle */
   newatomic = atomic(L);  /* mark everybody */
   if (newatomic < lastatomic + (lastatomic >> 3)) {  /* good collection? */
     atomic2gen(L, g);  /* return to generational mode */
@@ -1405,7 +1405,7 @@ static void stepgenfull (mask_State *L, global_State *g) {
   else {  /* another bad collection; stay in incremental mode */
     g->GCestimate = gettotalbytes(g);  /* first estimate */;
     entersweep(L);
-    maskC_runtilstate(L, bitmask(GCSpause));  /* finish collection */
+    helloC_runtilstate(L, bitmask(GCSpause));  /* finish collection */
     setpause(g);
     g->lastatomic = newatomic;
   }
@@ -1431,7 +1431,7 @@ static void stepgenfull (mask_State *L, global_State *g) {
 ** 'GCdebt <= 0' means an explicit call to GC step with "size" zero;
 ** in that case, do a minor collection.
 */
-static void genstep (mask_State *L, global_State *g) {
+static void genstep (hello_State *L, global_State *g) {
   if (g->lastatomic != 0)  /* last collection was a bad one? */
     stepgenfull(L, g);  /* do a full step */
   else {
@@ -1442,7 +1442,7 @@ static void genstep (mask_State *L, global_State *g) {
       if (gettotalbytes(g) < majorbase + (majorinc / 2)) {
         /* collected at least half of memory growth since last major
            collection; keep doing minor collections */
-        mask_assert(g->lastatomic == 0);
+        hello_assert(g->lastatomic == 0);
       }
       else {  /* bad collection */
         g->lastatomic = numobjs;  /* signal that last collection was bad */
@@ -1455,7 +1455,7 @@ static void genstep (mask_State *L, global_State *g) {
       g->GCestimate = majorbase;  /* preserve base value */
     }
   }
-  mask_assert(isdecGCmodegen(g));
+  hello_assert(isdecGCmodegen(g));
 }
 
 /* }====================================================== */
@@ -1475,10 +1475,10 @@ static void genstep (mask_State *L, global_State *g) {
 ** not need to skip objects created between "now" and the start of the
 ** real sweep.
 */
-static void entersweep (mask_State *L) {
+static void entersweep (hello_State *L) {
   global_State *g = G(L);
   g->gcstate = GCSswpallgc;
-  mask_assert(g->sweepgc == NULL);
+  hello_assert(g->sweepgc == NULL);
   g->sweepgc = sweeptolive(L, &g->allgc);
 }
 
@@ -1487,7 +1487,7 @@ static void entersweep (mask_State *L) {
 ** Delete all objects in list 'p' until (but not including) object
 ** 'limit'.
 */
-static void deletelist (mask_State *L, GCObject *p, GCObject *limit) {
+static void deletelist (hello_State *L, GCObject *p, GCObject *limit) {
   while (p != limit) {
     GCObject *next = p->next;
     freeobj(L, p);
@@ -1497,31 +1497,31 @@ static void deletelist (mask_State *L, GCObject *p, GCObject *limit) {
 
 
 /*
-** Call all finalizers of the objects in the given Mask state, and
+** Call all finalizers of the objects in the given Hello state, and
 ** then free all objects, except for the main thread.
 */
-void maskC_freeallobjects (mask_State *L) {
+void helloC_freeallobjects (hello_State *L) {
   global_State *g = G(L);
   g->gcstp = GCSTPCLS;  /* no extra finalizers after here */
-  maskC_changemode(L, KGC_INC);
+  helloC_changemode(L, KGC_INC);
   separatetobefnz(g, 1);  /* separate all objects with finalizers */
-  mask_assert(g->finobj == NULL);
+  hello_assert(g->finobj == NULL);
   callallpendingfinalizers(L);
   deletelist(L, g->allgc, obj2gco(g->mainthread));
-  mask_assert(g->finobj == NULL);  /* no new finalizers */
+  hello_assert(g->finobj == NULL);  /* no new finalizers */
   deletelist(L, g->fixedgc, NULL);  /* collect fixed objects */
-  mask_assert(g->strt.nuse == 0);
+  hello_assert(g->strt.nuse == 0);
 }
 
 
-static lu_mem atomic (mask_State *L) {
+static lu_mem atomic (hello_State *L) {
   global_State *g = G(L);
   lu_mem work = 0;
   GCObject *origweak, *origall;
   GCObject *grayagain = g->grayagain;  /* save original list */
   g->grayagain = NULL;
-  mask_assert(g->ephemeron == NULL && g->weak == NULL);
-  mask_assert(!iswhite(g->mainthread));
+  hello_assert(g->ephemeron == NULL && g->weak == NULL);
+  hello_assert(!iswhite(g->mainthread));
   g->gcstate = GCSatomic;
   markobject(g, L);  /* mark running thread */
   /* registry and global metatables may be changed by API */
@@ -1550,14 +1550,14 @@ static lu_mem atomic (mask_State *L) {
   /* clear values from resurrected weak tables */
   clearbyvalues(g, g->weak, origweak);
   clearbyvalues(g, g->allweak, origall);
-  maskS_clearcache(g);
+  helloS_clearcache(g);
   g->currentwhite = cast_byte(otherwhite(g));  /* flip current white */
-  mask_assert(g->gray == NULL);
+  hello_assert(g->gray == NULL);
   return work;  /* estimate of slots marked by 'atomic' */
 }
 
 
-static int sweepstep (mask_State *L, global_State *g,
+static int sweepstep (hello_State *L, global_State *g,
                       int nextstate, GCObject **nextlist) {
   if (g->sweepgc) {
     l_mem olddebt = g->GCdebt;
@@ -1574,10 +1574,10 @@ static int sweepstep (mask_State *L, global_State *g,
 }
 
 
-static lu_mem singlestep (mask_State *L) {
+static lu_mem singlestep (hello_State *L) {
   global_State *g = G(L);
   lu_mem work;
-  mask_assert(!g->gcstopem);  /* collector is not reentrant */
+  hello_assert(!g->gcstopem);  /* collector is not reentrant */
   g->gcstopem = 1;  /* no emergency collections while collecting */
   switch (g->gcstate) {
     case GCSpause: {
@@ -1630,7 +1630,7 @@ static lu_mem singlestep (mask_State *L) {
       }
       break;
     }
-    default: mask_assert(0); return 0;
+    default: hello_assert(0); return 0;
   }
   g->gcstopem = 0;
   return work;
@@ -1641,7 +1641,7 @@ static lu_mem singlestep (mask_State *L) {
 ** advances the garbage collector until it reaches a state allowed
 ** by 'statemask'
 */
-void maskC_runtilstate (mask_State *L, int statesmask) {
+void helloC_runtilstate (hello_State *L, int statesmask) {
   global_State *g = G(L);
   while (!testbit(statesmask, g->gcstate))
     singlestep(L);
@@ -1656,7 +1656,7 @@ void maskC_runtilstate (mask_State *L, int statesmask) {
 ** finishing a cycle (pause state). Finally, it sets the debt that
 ** controls when next step will be performed.
 */
-static void incstep (mask_State *L, global_State *g) {
+static void incstep (hello_State *L, global_State *g) {
   int stepmul = (getgcparam(g->gcstepmul) | 1);  /* avoid division by 0 */
   l_mem debt = (g->GCdebt / WORK2MEM) * stepmul;
   l_mem stepsize = (g->gcstepsize <= log2maxs(l_mem))
@@ -1670,16 +1670,16 @@ static void incstep (mask_State *L, global_State *g) {
     setpause(g);  /* pause until next cycle */
   else {
     debt = (debt / stepmul) * WORK2MEM;  /* convert 'work units' to bytes */
-    maskE_setdebt(g, debt);
+    helloE_setdebt(g, debt);
   }
 }
 
 /*
 ** performs a basic GC step if collector is running
 */
-void maskC_step (mask_State *L) {
+void helloC_step (hello_State *L) {
   global_State *g = G(L);
-  mask_assert(!g->gcemergency);
+  hello_assert(!g->gcemergency);
   if (gcrunning(g)) {  /* running? */
     if(isdecGCmodegen(g))
       genstep(L, g);
@@ -1696,15 +1696,15 @@ void maskC_step (mask_State *L) {
 ** to sweep all objects to turn them back to white (as white has not
 ** changed, nothing will be collected).
 */
-static void fullinc (mask_State *L, global_State *g) {
+static void fullinc (hello_State *L, global_State *g) {
   if (keepinvariant(g))  /* black objects? */
     entersweep(L); /* sweep everything to turn them back to white */
   /* finish any pending sweep phase to start a new cycle */
-  maskC_runtilstate(L, bitmask(GCSpause));
-  maskC_runtilstate(L, bitmask(GCScallfin));  /* run up to finalizers */
+  helloC_runtilstate(L, bitmask(GCSpause));
+  helloC_runtilstate(L, bitmask(GCScallfin));  /* run up to finalizers */
   /* estimate must be correct after a full GC cycle */
-  mask_assert(g->GCestimate == gettotalbytes(g));
-  maskC_runtilstate(L, bitmask(GCSpause));  /* finish collection */
+  hello_assert(g->GCestimate == gettotalbytes(g));
+  helloC_runtilstate(L, bitmask(GCSpause));  /* finish collection */
   setpause(g);
 }
 
@@ -1714,9 +1714,9 @@ static void fullinc (mask_State *L, global_State *g) {
 ** some operations which could change the interpreter state in some
 ** unexpected ways (running finalizers and shrinking some structures).
 */
-void maskC_fullgc (mask_State *L, int isemergency) {
+void helloC_fullgc (hello_State *L, int isemergency) {
   global_State *g = G(L);
-  mask_assert(!g->gcemergency);
+  hello_assert(!g->gcemergency);
   g->gcemergency = isemergency;  /* set flag */
   if (g->gckind == KGC_INC)
     fullinc(L, g);

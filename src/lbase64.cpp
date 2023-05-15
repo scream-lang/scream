@@ -1,32 +1,32 @@
 #include "lauxlib.h"
-#include "masklib.h"
+#include "hellolib.h"
 
-#ifdef MASK_USE_SOUP
+#ifdef HELLO_USE_SOUP
 
 #include <string>
 #include <soup/base64.hpp>
 
-static int encode(mask_State* L) {
-	mask_pushstring(L, soup::base64::encode(maskL_checkstring(L, 1), (bool)mask_toboolean(L, 2)).c_str());
+static int encode(hello_State* L) {
+	hello_pushstring(L, soup::base64::encode(helloL_checkstring(L, 1), (bool)hello_toboolean(L, 2)).c_str());
 	return 1;
 }
 
-static int decode(mask_State* L) {
-	mask_pushstring(L, soup::base64::decode(maskL_checkstring(L, 1)).c_str());
+static int decode(hello_State* L) {
+	hello_pushstring(L, soup::base64::decode(helloL_checkstring(L, 1)).c_str());
 	return 1;
 }
 
-static int urlEncode(mask_State* L) {
-	mask_pushstring(L, soup::base64::urlEncode(maskL_checkstring(L, 1), (bool)mask_toboolean(L, 2)).c_str());
+static int urlEncode(hello_State* L) {
+	hello_pushstring(L, soup::base64::urlEncode(helloL_checkstring(L, 1), (bool)hello_toboolean(L, 2)).c_str());
 	return 1;
 }
 
-static int urlDecode(mask_State* L) {
-	mask_pushstring(L, soup::base64::urlDecode(maskL_checkstring(L, 1)).c_str());
+static int urlDecode(hello_State* L) {
+	hello_pushstring(L, soup::base64::urlDecode(helloL_checkstring(L, 1)).c_str());
 	return 1;
 }
 
-static const maskL_Reg funcs[] = {
+static const helloL_Reg funcs[] = {
 	{"url_encode", urlEncode},
 	{"url_decode", urlDecode},
 	{"encode", encode},
@@ -34,8 +34,8 @@ static const maskL_Reg funcs[] = {
 	{nullptr, nullptr}
 };
 
-MASKMOD_API int maskopen_base64(mask_State* L) {
-	maskL_newlib(L, funcs);
+HELLOMOD_API int helloopen_base64(hello_State* L) {
+	helloL_newlib(L, funcs);
 	return 1;
 }
 

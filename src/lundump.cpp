@@ -1,11 +1,11 @@
 /*
 ** $Id: lundump.c $
-** load precompiled Mask chunks
-** See Copyright Notice in mask.h
+** load precompiled Hello chunks
+** See Copyright Notice in hello.h
 */
 
 #define lundump_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
@@ -13,7 +13,7 @@
 #include <limits.h>
 #include <string.h>
 
-#include "mask.h"
+#include "hello.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -25,21 +25,21 @@
 #include "lzio.h"
 
 
-#if !defined(maski_verifycode)
-#define maski_verifycode(L,f)  /* empty */
+#if !defined(helloi_verifycode)
+#define helloi_verifycode(L,f)  /* empty */
 #endif
 
 
 typedef struct {
-  mask_State *L;
+  hello_State *L;
   ZIO *Z;
   const char *name;
 } LoadState;
 
 
 [[noreturn]] static void error (LoadState *S, const char *why) {
-  maskO_pushfstring(S->L, "%s: bad binary format (%s)", S->name, why);
-  maskD_throw(S->L, MASK_ERRSYNTAX);
+  helloO_pushfstring(S->L, "%s: bad binary format (%s)", S->name, why);
+  helloD_throw(S->L, HELLO_ERRSYNTAX);
 }
 
 
@@ -50,7 +50,7 @@ typedef struct {
 #define loadVector(S,b,n)	loadBlock(S,b,(n)*sizeof((b)[0]))
 
 static void loadBlock (LoadState *S, void *b, size_t size) {
-  if (maskZ_read(S->Z, b, size) != 0)
+  if (helloZ_read(S->Z, b, size) != 0)
     error(S, "truncated chunk");
 }
 
@@ -90,15 +90,15 @@ static int loadInt (LoadState *S) {
 }
 
 
-static mask_Number loadNumber (LoadState *S) {
-  mask_Number x;
+static hello_Number loadNumber (LoadState *S) {
+  hello_Number x;
   loadVar(S, x);
   return x;
 }
 
 
-static mask_Integer loadInteger (LoadState *S) {
-  mask_Integer x;
+static hello_Integer loadInteger (LoadState *S) {
+  hello_Integer x;
   loadVar(S, x);
   return x;
 }
@@ -108,24 +108,24 @@ static mask_Integer loadInteger (LoadState *S) {
 ** Load a nullable string into prototype 'p'.
 */
 static TString *loadStringN (LoadState *S, Proto *p) {
-  mask_State *L = S->L;
+  hello_State *L = S->L;
   TString *ts;
   size_t size = loadSize(S);
   if (size == 0)  /* no string? */
     return NULL;
-  else if (--size <= MASKI_MAXSHORTLEN) {  /* short string? */
-    char buff[MASKI_MAXSHORTLEN];
+  else if (--size <= HELLOI_MAXSHORTLEN) {  /* short string? */
+    char buff[HELLOI_MAXSHORTLEN];
     loadVector(S, buff, size);  /* load string into buffer */
-    ts = maskS_newlstr(L, buff, size);  /* create string */
+    ts = helloS_newlstr(L, buff, size);  /* create string */
   }
   else {  /* long string */
-    ts = maskS_createlngstrobj(L, size);  /* create string */
+    ts = helloS_createlngstrobj(L, size);  /* create string */
     setsvalue2s(L, L->top, ts);  /* anchor it ('loadVector' can GC) */
-    maskD_inctop(L);
+    helloD_inctop(L);
     loadVector(S, getstr(ts), size);  /* load directly in final place */
     L->top--;  /* pop string */
   }
-  maskC_objbarrier(L, p, ts);
+  helloC_objbarrier(L, p, ts);
   return ts;
 }
 
@@ -143,7 +143,7 @@ static TString *loadString (LoadState *S, Proto *p) {
 
 static void loadCode (LoadState *S, Proto *f) {
   int n = loadInt(S);
-  f->code = maskM_newvectorchecked(S->L, n, Instruction);
+  f->code = helloM_newvectorchecked(S->L, n, Instruction);
   f->sizecode = n;
   loadVector(S, f->code, n);
 }
@@ -155,7 +155,7 @@ static void loadFunction(LoadState *S, Proto *f, TString *psource);
 static void loadConstants (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->k = maskM_newvectorchecked(S->L, n, TValue);
+  f->k = helloM_newvectorchecked(S->L, n, TValue);
   f->sizek = n;
   for (i = 0; i < n; i++)
     setnilvalue(&f->k[i]);
@@ -163,26 +163,26 @@ static void loadConstants (LoadState *S, Proto *f) {
     TValue *o = &f->k[i];
     int t = loadByte(S);
     switch (t) {
-      case MASK_VNIL:
+      case HELLO_VNIL:
         setnilvalue(o);
         break;
-      case MASK_VFALSE:
+      case HELLO_VFALSE:
         setbfvalue(o);
         break;
-      case MASK_VTRUE:
+      case HELLO_VTRUE:
         setbtvalue(o);
         break;
-      case MASK_VNUMFLT:
+      case HELLO_VNUMFLT:
         setfltvalue(o, loadNumber(S));
         break;
-      case MASK_VNUMINT:
+      case HELLO_VNUMINT:
         setivalue(o, loadInteger(S));
         break;
-      case MASK_VSHRSTR:
-      case MASK_VLNGSTR:
+      case HELLO_VSHRSTR:
+      case HELLO_VLNGSTR:
         setsvalue2n(S->L, o, loadString(S, f));
         break;
-      default: mask_assert(0);
+      default: hello_assert(0);
     }
   }
 }
@@ -191,13 +191,13 @@ static void loadConstants (LoadState *S, Proto *f) {
 static void loadProtos (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->p = maskM_newvectorchecked(S->L, n, Proto *);
+  f->p = helloM_newvectorchecked(S->L, n, Proto *);
   f->sizep = n;
   for (i = 0; i < n; i++)
     f->p[i] = NULL;
   for (i = 0; i < n; i++) {
-    f->p[i] = maskF_newproto(S->L);
-    maskC_objbarrier(S->L, f, f->p[i]);
+    f->p[i] = helloF_newproto(S->L);
+    helloC_objbarrier(S->L, f, f->p[i]);
     loadFunction(S, f->p[i], f->source);
   }
 }
@@ -212,7 +212,7 @@ static void loadProtos (LoadState *S, Proto *f) {
 static void loadUpvalues (LoadState *S, Proto *f) {
   int i, n;
   n = loadInt(S);
-  f->upvalues = maskM_newvectorchecked(S->L, n, Upvaldesc);
+  f->upvalues = helloM_newvectorchecked(S->L, n, Upvaldesc);
   f->sizeupvalues = n;
   for (i = 0; i < n; i++)  /* make array valid for GC */
     f->upvalues[i].name = NULL;
@@ -227,18 +227,18 @@ static void loadUpvalues (LoadState *S, Proto *f) {
 static void loadDebug (LoadState *S, Proto *f) {
   int i, n;
   n = loadInt(S);
-  f->lineinfo = maskM_newvectorchecked(S->L, n, ls_byte);
+  f->lineinfo = helloM_newvectorchecked(S->L, n, ls_byte);
   f->sizelineinfo = n;
   loadVector(S, f->lineinfo, n);
   n = loadInt(S);
-  f->abslineinfo = maskM_newvectorchecked(S->L, n, AbsLineInfo);
+  f->abslineinfo = helloM_newvectorchecked(S->L, n, AbsLineInfo);
   f->sizeabslineinfo = n;
   for (i = 0; i < n; i++) {
     f->abslineinfo[i].pc = loadInt(S);
     f->abslineinfo[i].line = loadInt(S);
   }
   n = loadInt(S);
-  f->locvars = maskM_newvectorchecked(S->L, n, LocVar);
+  f->locvars = helloM_newvectorchecked(S->L, n, LocVar);
   f->sizelocvars = n;
   for (i = 0; i < n; i++)
     f->locvars[i].varname = NULL;
@@ -271,7 +271,7 @@ static void loadFunction (LoadState *S, Proto *f, TString *psource) {
 
 
 static void checkliteral (LoadState *S, const char *s, const char *msg) {
-  char buff[sizeof(MASK_SIGNATURE) + sizeof(MASKC_DATA)]; /* larger than both */
+  char buff[sizeof(HELLO_SIGNATURE) + sizeof(HELLOC_DATA)]; /* larger than both */
   size_t len = strlen(s);
   loadVector(S, buff, len);
   if (memcmp(s, buff, len) != 0)
@@ -281,7 +281,7 @@ static void checkliteral (LoadState *S, const char *s, const char *msg) {
 
 static void fchecksize (LoadState *S, size_t size, const char *tname) {
   if (loadByte(S) != size)
-    error(S, maskO_pushfstring(S->L, "%s size mismatch", tname));
+    error(S, helloO_pushfstring(S->L, "%s size mismatch", tname));
 }
 
 
@@ -289,18 +289,18 @@ static void fchecksize (LoadState *S, size_t size, const char *tname) {
 
 static void checkHeader (LoadState *S) {
   /* skip 1st char (already read and checked) */
-  checkliteral(S, &MASK_SIGNATURE[1], "not a binary chunk");
-  if (loadByte(S) != MASKC_VERSION)
+  checkliteral(S, &HELLO_SIGNATURE[1], "not a binary chunk");
+  if (loadByte(S) != HELLOC_VERSION)
     error(S, "version mismatch");
-  if (loadByte(S) != MASKC_FORMAT)
+  if (loadByte(S) != HELLOC_FORMAT)
     error(S, "format mismatch");
-  checkliteral(S, MASKC_DATA, "corrupted chunk");
+  checkliteral(S, HELLOC_DATA, "corrupted chunk");
   checksize(S, Instruction);
-  checksize(S, mask_Integer);
-  checksize(S, mask_Number);
-  if (loadInteger(S) != MASKC_INT)
+  checksize(S, hello_Integer);
+  checksize(S, hello_Number);
+  if (loadInteger(S) != HELLOC_INT)
     error(S, "integer format mismatch");
-  if (loadNumber(S) != MASKC_NUM)
+  if (loadNumber(S) != HELLOC_NUM)
     error(S, "float format mismatch");
 }
 
@@ -308,26 +308,26 @@ static void checkHeader (LoadState *S) {
 /*
 ** Load precompiled chunk.
 */
-LClosure *maskU_undump(mask_State *L, ZIO *Z, const char *name) {
+LClosure *helloU_undump(hello_State *L, ZIO *Z, const char *name) {
   LoadState S;
   LClosure *cl;
   if (*name == '@' || *name == '=')
     S.name = name + 1;
-  else if (*name == MASK_SIGNATURE[0])
+  else if (*name == HELLO_SIGNATURE[0])
     S.name = "binary string";
   else
     S.name = name;
   S.L = L;
   S.Z = Z;
   checkHeader(&S);
-  cl = maskF_newLclosure(L, loadByte(&S));
+  cl = helloF_newLclosure(L, loadByte(&S));
   setclLvalue2s(L, L->top, cl);
-  maskD_inctop(L);
-  cl->p = maskF_newproto(L);
-  maskC_objbarrier(L, cl, cl->p);
+  helloD_inctop(L);
+  cl->p = helloF_newproto(L);
+  helloC_objbarrier(L, cl, cl->p);
   loadFunction(&S, cl->p, NULL);
-  mask_assert(cl->nupvalues == cl->p->sizeupvalues);
-  maski_verifycode(L, cl->p);
+  hello_assert(cl->nupvalues == cl->p->sizeupvalues);
+  helloi_verifycode(L, cl->p);
   return cl;
 }
 

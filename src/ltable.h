@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: ltable.h $
-** Mask tables (hash)
-** See Copyright Notice in mask.h
+** Hello tables (hash)
+** See Copyright Notice in hello.h
 */
 
 #include "lobject.h"
@@ -33,28 +33,28 @@
 #define nodefromval(v)	cast(Node *, (v))
 
 
-MASKI_FUNC const TValue *maskH_getint (Table *t, mask_Integer key);
-MASKI_FUNC void maskH_setint (mask_State *L, Table *t, mask_Integer key,
+HELLOI_FUNC const TValue *helloH_getint (Table *t, hello_Integer key);
+HELLOI_FUNC void helloH_setint (hello_State *L, Table *t, hello_Integer key,
                                                     TValue *value);
-MASKI_FUNC const TValue *maskH_getshortstr (Table *t, TString *key);
-MASKI_FUNC const TValue *maskH_getstr (Table *t, TString *key);
-MASKI_FUNC const TValue *maskH_get (Table *t, const TValue *key);
-MASKI_FUNC void maskH_newkey (mask_State *L, Table *t, const TValue *key,
+HELLOI_FUNC const TValue *helloH_getshortstr (Table *t, TString *key);
+HELLOI_FUNC const TValue *helloH_getstr (Table *t, TString *key);
+HELLOI_FUNC const TValue *helloH_get (Table *t, const TValue *key);
+HELLOI_FUNC void helloH_newkey (hello_State *L, Table *t, const TValue *key,
                                                     TValue *value);
-MASKI_FUNC void maskH_set (mask_State *L, Table *t, const TValue *key,
+HELLOI_FUNC void helloH_set (hello_State *L, Table *t, const TValue *key,
                                                  TValue *value);
-MASKI_FUNC void maskH_finishset (mask_State *L, Table *t, const TValue *key,
+HELLOI_FUNC void helloH_finishset (hello_State *L, Table *t, const TValue *key,
                                        const TValue *slot, TValue *value);
-MASKI_FUNC Table *maskH_new (mask_State *L);
-MASKI_FUNC void maskH_resize (mask_State *L, Table *t, unsigned int nasize,
+HELLOI_FUNC Table *helloH_new (hello_State *L);
+HELLOI_FUNC void helloH_resize (hello_State *L, Table *t, unsigned int nasize,
                                                     unsigned int nhsize);
-MASKI_FUNC void maskH_resizearray (mask_State *L, Table *t, unsigned int nasize);
-MASKI_FUNC void maskH_free (mask_State *L, Table *t);
-MASKI_FUNC int maskH_next (mask_State *L, Table *t, StkId key);
-MASKI_FUNC mask_Unsigned maskH_getn (Table *t);
-MASKI_FUNC unsigned int maskH_realasize (const Table *t);
+HELLOI_FUNC void helloH_resizearray (hello_State *L, Table *t, unsigned int nasize);
+HELLOI_FUNC void helloH_free (hello_State *L, Table *t);
+HELLOI_FUNC int helloH_next (hello_State *L, Table *t, StkId key);
+HELLOI_FUNC hello_Unsigned helloH_getn (Table *t);
+HELLOI_FUNC unsigned int helloH_realasize (const Table *t);
 
 
-#if defined(MASK_DEBUG)
-MASKI_FUNC Node *maskH_mainposition (const Table *t, const TValue *key);
+#if defined(HELLO_DEBUG)
+HELLOI_FUNC Node *helloH_mainposition (const Table *t, const TValue *key);
 #endif

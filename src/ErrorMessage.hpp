@@ -4,7 +4,7 @@
 
 #include "llex.h"
 
-namespace Mask
+namespace Hello
 {
 	class ErrorMessage
 	{
@@ -34,7 +34,7 @@ namespace Mask
 
 		ErrorMessage& addSrcLine(int line)
 		{
-#ifndef MASK_SHORT_ERRORS
+#ifndef HELLO_SHORT_ERRORS
 			const auto line_string = this->ls->getLineString(line);
 			const auto init_len = this->content.length();
 			this->content.append("\n    ");
@@ -49,7 +49,7 @@ namespace Mask
 
 		ErrorMessage& addGenericHere(const std::string& msg) // TO-DO: Add '^^^' strings for specific keywords. Not accurate with a simple string search.
 		{
-#ifndef MASK_SHORT_ERRORS
+#ifndef HELLO_SHORT_ERRORS
 			this->content.push_back('\n');
 			this->content.append(std::string(this->line_len, ' ') + "| ");
 			this->content.append(HBLU + std::string(this->src_len, '^'));
@@ -61,7 +61,7 @@ namespace Mask
 
 		ErrorMessage& addGenericHere()
 		{
-#ifndef MASK_SHORT_ERRORS
+#ifndef HELLO_SHORT_ERRORS
 			this->content.push_back('\n');
 			this->content.append(std::string(this->line_len, ' ') + "| ");
 			this->content.append(HBLU + std::string(this->src_len, '^'));
@@ -73,7 +73,7 @@ namespace Mask
 
 		ErrorMessage& addNote(const std::string& msg)
 		{
-#ifndef MASK_SHORT_ERRORS
+#ifndef HELLO_SHORT_ERRORS
 			const auto pad = std::string(this->line_len, ' ');
 			this->content.push_back('\n');
 			this->content.append(pad + HCYN + "+ note: " + RESET);
@@ -82,17 +82,17 @@ namespace Mask
 			return *this;
 		}
 
-		// Pushes the string to the stack for maskD_throw to conveniently pick up.
+		// Pushes the string to the stack for helloD_throw to conveniently pick up.
 		void finalize()
 		{
 			this->content.append(RESET);
-			mask_pushlstring(ls->L, this->content.data(), this->content.size());
+			hello_pushlstring(ls->L, this->content.data(), this->content.size());
 		}
 
 		[[noreturn]] void finalizeAndThrow()
 		{
 			this->finalize();
-			maskD_throw(ls->L, MASK_ERRSYNTAX);
+			helloD_throw(ls->L, HELLO_ERRSYNTAX);
 		}
 	};
 }

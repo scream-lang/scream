@@ -1,18 +1,18 @@
 /*
 ** $Id: lmem.c $
 ** Interface to Memory Manager
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
 #define lmem_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
 
 #include <stddef.h>
 
-#include "mask.h"
+#include "hello.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -76,7 +76,7 @@ static void *firsttry (global_State *g, void *block, size_t os, size_t ns) {
 #define MINSIZEARRAY	4
 
 
-void *maskM_growaux_ (mask_State *L, void *block, int nelems, int *psize,
+void *helloM_growaux_ (hello_State *L, void *block, int nelems, int *psize,
                      int size_elems, int limit, const char *what) {
   void *newblock;
   int size = *psize;
@@ -84,7 +84,7 @@ void *maskM_growaux_ (mask_State *L, void *block, int nelems, int *psize,
     return block;  /* nothing to be done */
   if (size >= limit / 2) {  /* cannot double it? */
     if (l_unlikely(size >= limit))  /* cannot grow even a little? */
-      maskG_runerror(L, "too many %s (limit is %d)", what, limit);
+      helloG_runerror(L, "too many %s (limit is %d)", what, limit);
     size = limit;  /* still have at least one free place */
   }
   else {
@@ -92,9 +92,9 @@ void *maskM_growaux_ (mask_State *L, void *block, int nelems, int *psize,
     if (size < MINSIZEARRAY)
       size = MINSIZEARRAY;  /* minimum size */
   }
-  mask_assert(nelems + 1 <= size && size <= limit);
+  hello_assert(nelems + 1 <= size && size <= limit);
   /* 'limit' ensures that multiplication will not overflow */
-  newblock = maskM_saferealloc_(L, block, cast_sizet(*psize) * size_elems,
+  newblock = helloM_saferealloc_(L, block, cast_sizet(*psize) * size_elems,
                                          cast_sizet(size) * size_elems);
   *psize = size;  /* update only when everything else is OK */
   return newblock;
@@ -107,13 +107,13 @@ void *maskM_growaux_ (mask_State *L, void *block, int nelems, int *psize,
 ** to its number of elements, the only option is to raise an
 ** error.
 */
-void *maskM_shrinkvector_ (mask_State *L, void *block, int *size,
+void *helloM_shrinkvector_ (hello_State *L, void *block, int *size,
                           int final_n, int size_elem) {
   void *newblock;
   size_t oldsize = cast_sizet((*size) * size_elem);
   size_t newsize = cast_sizet(final_n * size_elem);
-  mask_assert(newsize <= oldsize);
-  newblock = maskM_saferealloc_(L, block, oldsize, newsize);
+  hello_assert(newsize <= oldsize);
+  newblock = helloM_saferealloc_(L, block, oldsize, newsize);
   *size = final_n;
   return newblock;
 }
@@ -121,17 +121,17 @@ void *maskM_shrinkvector_ (mask_State *L, void *block, int *size,
 /* }================================================================== */
 
 
-void maskM_toobig (mask_State *L) {
-  maskG_runerror(L, "memory allocation error: block too big");
+void helloM_toobig (hello_State *L) {
+  helloG_runerror(L, "memory allocation error: block too big");
 }
 
 
 /*
 ** Free memory
 */
-void maskM_free_ (mask_State *L, void *block, size_t osize) {
+void helloM_free_ (hello_State *L, void *block, size_t osize) {
   global_State *g = G(L);
-  mask_assert((osize == 0) == (block == NULL));
+  hello_assert((osize == 0) == (block == NULL));
   (*g->frealloc)(g->ud, block, osize, 0);
   g->GCdebt -= osize;
 }
@@ -145,11 +145,11 @@ void maskM_free_ (mask_State *L, void *block, size_t osize) {
 ** when 'gcstopem' is true, because then the interpreter is in the
 ** middle of a collection step.
 */
-static void *tryagain (mask_State *L, void *block,
+static void *tryagain (hello_State *L, void *block,
                        size_t osize, size_t nsize) {
   global_State *g = G(L);
   if (completestate(g) && !g->gcstopem) {
-    maskC_fullgc(L, 1);  /* try to free some memory... */
+    helloC_fullgc(L, 1);  /* try to free some memory... */
     return (*g->frealloc)(g->ud, block, osize, nsize);  /* try again */
   }
   else return NULL;  /* cannot free any memory without a full state */
@@ -159,32 +159,32 @@ static void *tryagain (mask_State *L, void *block,
 /*
 ** Generic allocation routine.
 */
-void *maskM_realloc_ (mask_State *L, void *block, size_t osize, size_t nsize) {
+void *helloM_realloc_ (hello_State *L, void *block, size_t osize, size_t nsize) {
   void *newblock;
   global_State *g = G(L);
-  mask_assert((osize == 0) == (block == NULL));
+  hello_assert((osize == 0) == (block == NULL));
   newblock = firsttry(g, block, osize, nsize);
   if (l_unlikely(newblock == NULL && nsize > 0)) {
     newblock = tryagain(L, block, osize, nsize);
     if (newblock == NULL)  /* still no memory? */
       return NULL;  /* do not update 'GCdebt' */
   }
-  mask_assert((nsize == 0) == (newblock == NULL));
+  hello_assert((nsize == 0) == (newblock == NULL));
   g->GCdebt = (g->GCdebt + nsize) - osize;
   return newblock;
 }
 
 
-void *maskM_saferealloc_ (mask_State *L, void *block, size_t osize,
+void *helloM_saferealloc_ (hello_State *L, void *block, size_t osize,
                                                     size_t nsize) {
-  void *newblock = maskM_realloc_(L, block, osize, nsize);
+  void *newblock = helloM_realloc_(L, block, osize, nsize);
   if (l_unlikely(newblock == NULL && nsize > 0))  /* allocation failed? */
-    maskM_error(L);
+    helloM_error(L);
   return newblock;
 }
 
 
-void *maskM_malloc_ (mask_State *L, size_t size, int tag) {
+void *helloM_malloc_ (hello_State *L, size_t size, int tag) {
   if (size == 0)
     return NULL;  /* that's all */
   else {
@@ -193,7 +193,7 @@ void *maskM_malloc_ (mask_State *L, size_t size, int tag) {
     if (l_unlikely(newblock == NULL)) {
       newblock = tryagain(L, NULL, tag, size);
       if (newblock == NULL)
-        maskM_error(L);
+        helloM_error(L);
     }
     g->GCdebt += size;
     return newblock;

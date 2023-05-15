@@ -2,10 +2,10 @@
 /*
 ** $Id: lzio.h $
 ** Buffered streams
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
-#include "mask.h"
+#include "hello.h"
 
 #include "lmem.h"
 
@@ -14,7 +14,7 @@
 
 typedef struct Zio ZIO;
 
-#define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : maskZ_fill(z))
+#define zgetc(z)  (((z)->n--)>0 ?  cast_uchar(*(z)->p++) : helloZ_fill(z))
 
 
 typedef struct Mbuffer {
@@ -23,27 +23,27 @@ typedef struct Mbuffer {
   size_t buffsize;
 } Mbuffer;
 
-#define maskZ_initbuffer(L, buff) ((buff)->buffer = NULL, (buff)->buffsize = 0)
+#define helloZ_initbuffer(L, buff) ((buff)->buffer = NULL, (buff)->buffsize = 0)
 
-#define maskZ_buffer(buff)	((buff)->buffer)
-#define maskZ_sizebuffer(buff)	((buff)->buffsize)
-#define maskZ_bufflen(buff)	((buff)->n)
+#define helloZ_buffer(buff)	((buff)->buffer)
+#define helloZ_sizebuffer(buff)	((buff)->buffsize)
+#define helloZ_bufflen(buff)	((buff)->n)
 
-#define maskZ_buffremove(buff,i)	((buff)->n -= (i))
-#define maskZ_resetbuffer(buff) ((buff)->n = 0)
+#define helloZ_buffremove(buff,i)	((buff)->n -= (i))
+#define helloZ_resetbuffer(buff) ((buff)->n = 0)
 
 
-#define maskZ_resizebuffer(L, buff, size) \
-    ((buff)->buffer = maskM_reallocvchar(L, (buff)->buffer, \
+#define helloZ_resizebuffer(L, buff, size) \
+    ((buff)->buffer = helloM_reallocvchar(L, (buff)->buffer, \
                 (buff)->buffsize, size), \
     (buff)->buffsize = size)
 
-#define maskZ_freebuffer(L, buff)	maskZ_resizebuffer(L, buff, 0)
+#define helloZ_freebuffer(L, buff)	helloZ_resizebuffer(L, buff, 0)
 
 
-MASKI_FUNC void maskZ_init (mask_State *L, ZIO *z, mask_Reader reader,
+HELLOI_FUNC void helloZ_init (hello_State *L, ZIO *z, hello_Reader reader,
                                         void *data);
-MASKI_FUNC size_t maskZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes */
+HELLOI_FUNC size_t helloZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes */
 
 
 
@@ -52,10 +52,10 @@ MASKI_FUNC size_t maskZ_read (ZIO* z, void *b, size_t n);	/* read next n bytes *
 struct Zio {
   size_t n;			/* bytes still unread */
   const char *p;		/* current position in buffer */
-  mask_Reader reader;		/* reader function */
+  hello_Reader reader;		/* reader function */
   void *data;			/* additional data */
-  mask_State *L;			/* Mask state (for reader) */
+  hello_State *L;			/* Hello state (for reader) */
 };
 
 
-MASKI_FUNC int maskZ_fill (ZIO *z);
+HELLOI_FUNC int helloZ_fill (ZIO *z);

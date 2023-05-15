@@ -1,18 +1,18 @@
 /*
 ** $Id: lzio.c $
 ** Buffered streams
-** See Copyright Notice in mask.h
+** See Copyright Notice in hello.h
 */
 
 #define lzio_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
 
 #include <string.h>
 
-#include "mask.h"
+#include "hello.h"
 
 #include "llimits.h"
 #include "lmem.h"
@@ -20,13 +20,13 @@
 #include "lzio.h"
 
 
-int maskZ_fill (ZIO *z) {
+int helloZ_fill (ZIO *z) {
   size_t size;
-  mask_State *L = z->L;
+  hello_State *L = z->L;
   const char *buff;
-  mask_unlock(L);
+  hello_unlock(L);
   buff = z->reader(L, z->data, &size);
-  mask_lock(L);
+  hello_lock(L);
   if (buff == NULL || size == 0)
     return EOZ;
   z->n = size - 1;  /* discount char being returned */
@@ -35,7 +35,7 @@ int maskZ_fill (ZIO *z) {
 }
 
 
-void maskZ_init (mask_State *L, ZIO *z, mask_Reader reader, void *data) {
+void helloZ_init (hello_State *L, ZIO *z, hello_Reader reader, void *data) {
   z->L = L;
   z->reader = reader;
   z->data = data;
@@ -45,14 +45,14 @@ void maskZ_init (mask_State *L, ZIO *z, mask_Reader reader, void *data) {
 
 
 /* --------------------------------------------------------------- read --- */
-size_t maskZ_read (ZIO *z, void *b, size_t n) {
+size_t helloZ_read (ZIO *z, void *b, size_t n) {
   while (n) {
     size_t m;
     if (z->n == 0) {  /* no bytes in buffer? */
-      if (maskZ_fill(z) == EOZ)  /* try to read more */
+      if (helloZ_fill(z) == EOZ)  /* try to read more */
         return n;  /* no more input; return number of missing bytes */
       else {
-        z->n++;  /* maskZ_fill consumed first byte; put it back */
+        z->n++;  /* helloZ_fill consumed first byte; put it back */
         z->p--;
       }
     }

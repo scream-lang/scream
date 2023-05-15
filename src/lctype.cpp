@@ -1,23 +1,23 @@
 /*
 ** $Id: lctype.c $
-** 'ctype' functions for Mask
-** See Copyright Notice in mask.h
+** 'ctype' functions for Hello
+** See Copyright Notice in hello.h
 */
 
 #define lctype_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
 
 #include "lctype.h"
 
-#if !MASK_USE_CTYPE	/* { */
+#if !HELLO_USE_CTYPE	/* { */
 
 #include <limits.h>
 
 
-#if defined (MASK_UCID)		/* accept UniCode IDentifiers? */
+#if defined (HELLO_UCID)		/* accept UniCode IDentifiers? */
 /* consider all non-ascii codepoints to be alphabetic */
 #define NONA		0x01
 #else
@@ -25,7 +25,7 @@
 #endif
 
 
-MASKI_DDEF const lu_byte maski_ctype_[UCHAR_MAX + 2] = {
+HELLOI_DDEF const lu_byte helloi_ctype_[UCHAR_MAX + 2] = {
   0x00,  /* EOZ */
   0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,	/* 0. */
   0x00,  0x08,  0x08,  0x08,  0x08,  0x08,  0x00,  0x00,

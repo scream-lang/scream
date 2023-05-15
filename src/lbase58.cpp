@@ -1,40 +1,40 @@
 #include "lauxlib.h"
-#include "masklib.h"
+#include "hellolib.h"
 
-#ifdef MASK_USE_SOUP
+#ifdef HELLO_USE_SOUP
 
 #include <soup/string.hpp>
 #include <soup/base58.hpp>
 
-static int decode(mask_State* L) {
+static int decode(hello_State* L) {
 	try {
-		mask_pushstring(L, soup::string::bin2hex(soup::base58::decode(maskL_checkstring(L, 1))).c_str());
+		hello_pushstring(L, soup::string::bin2hex(soup::base58::decode(helloL_checkstring(L, 1))).c_str());
 	}
 	catch (...) {
-		maskL_error(L, "Attempted to decode non-base58 string.");
+		helloL_error(L, "Attempted to decode non-base58 string.");
 	}
 	return 1;
 }
 
-static int is_valid(mask_State* L) {
+static int is_valid(hello_State* L) {
 	try {
-		const auto discarding = soup::base58::decode(maskL_checkstring(L, 1));
-		mask_pushboolean(L, true);
+		const auto discarding = soup::base58::decode(helloL_checkstring(L, 1));
+		hello_pushboolean(L, true);
 	}
 	catch (...) {
-		mask_pushboolean(L, false);
+		hello_pushboolean(L, false);
 	}
 	return 1;
 }
 
-static const maskL_Reg funcs[] = {
+static const helloL_Reg funcs[] = {
 	{"is_valid", is_valid},
 	{"decode", decode},
 	{nullptr, nullptr}
 };
 
-MASKMOD_API int maskopen_base58(mask_State* L) {
-	maskL_newlib(L, funcs);
+HELLOMOD_API int helloopen_base58(hello_State* L) {
+	helloL_newlib(L, funcs);
 	return 1;
 }
 

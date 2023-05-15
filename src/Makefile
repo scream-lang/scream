@@ -1,4 +1,5 @@
-# Makefile for building Mask
+# Makefile for building Hello
+# See ../doc/readme.html for installation and customization instructions.
 
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
@@ -6,7 +7,7 @@
 PLAT= mingw
 
 CXX= g++ -std=c++17 -O3 -flto
-CXXFLAGS= -Wall -Wextra -DMASK_COMPAT_5_3 $(SYSCFLAGS) $(MYCFLAGS)
+CXXFLAGS= -Wall -Wextra -DHELLO_COMPAT_5_3 $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 
@@ -36,20 +37,20 @@ CMCFLAGS=
 
 PLATS= guess aix bsd freebsd generic linux linux-readline macosx mingw posix solaris
 
-MASK_A=	libmask.a
+HELLO_A=	libhello.a
 CORE_O=	lapi.o lcode.o lctype.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o lundump.o lvm.o lzio.o
 LIB_O=	lauxlib.o lbaselib.o lcorolib.o ldblib.o liolib.o lmathlib.o loadlib.o loslib.o lstrlib.o lcryptolib.o ltablib.o lutf8lib.o linit.o
 BASE_O= $(CORE_O) $(LIB_O) $(MYOBJS)
 
-MASK_T=	mask
-MASK_O=	mask.o
+HELLO_T=	hello
+HELLO_O=	hello.o
 
-MASKC_T=	maskc
-MASKC_O=	maskc.o
+HELLOC_T=	helloc
+HELLOC_O=	helloc.o
 
-ALL_O= $(BASE_O) $(MASK_O) $(MASKC_O)
-ALL_T= $(MASK_A) $(MASK_T) $(MASKC_T)
-ALL_A= $(MASK_A)
+ALL_O= $(BASE_O) $(HELLO_O) $(HELLOC_O)
+ALL_T= $(HELLO_A) $(HELLO_T) $(HELLOC_T)
+ALL_A= $(HELLO_A)
 
 # Targets start here.
 default: $(PLAT)
@@ -60,18 +61,18 @@ o:	$(ALL_O)
 
 a:	$(ALL_A)
 
-$(MASK_A): $(BASE_O)
+$(HELLO_A): $(BASE_O)
 	$(AR) $@ $(BASE_O)
 	$(RANLIB) $@
 
-$(MASK_T): $(MASK_O) $(MASK_A)
-	$(CXX) -o $@ $(LDFLAGS) $(MASK_O) $(MASK_A) $(LIBS)
+$(HELLO_T): $(HELLO_O) $(HELLO_A)
+	$(CXX) -o $@ $(LDFLAGS) $(HELLO_O) $(HELLO_A) $(LIBS)
 
-$(MASKC_T): $(MASKC_O) $(MASK_A)
-	$(CXX) -o $@ $(LDFLAGS) $(MASKC_O) $(MASK_A) $(LIBS)
+$(HELLOC_T): $(HELLOC_O) $(HELLO_A)
+	$(CXX) -o $@ $(LDFLAGS) $(HELLOC_O) $(HELLO_A) $(LIBS)
 
 test:
-	./$(MASK_T) -v
+	./$(HELLO_T) -v
 
 clean:
 	$(RM) $(ALL_T) $(ALL_O)
@@ -103,38 +104,38 @@ guess:
 	@$(MAKE) `$(UNAME)`
 
 AIX aix:
-	$(MAKE) $(ALL) CXX="xlc" CFLAGS="-O2 -DMASK_USE_POSIX -DMASK_USE_DLOPEN" SYSLIBS="-ldl" SYSLDFLAGS="-brtl -bexpall"
+	$(MAKE) $(ALL) CXX="xlc" CFLAGS="-O2 -DHELLO_USE_POSIX -DHELLO_USE_DLOPEN" SYSLIBS="-ldl" SYSLDFLAGS="-brtl -bexpall"
 
 bsd:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_POSIX -DMASK_USE_DLOPEN" SYSLIBS="-Wl,-E"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_POSIX -DHELLO_USE_DLOPEN" SYSLIBS="-Wl,-E"
 
 FreeBSD NetBSD OpenBSD freebsd:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_LINUX -DMASK_USE_READLINE -I/usr/include/edit" SYSLIBS="-ledit" CC="cc"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_LINUX -DHELLO_USE_READLINE -I/usr/include/edit" SYSLIBS="-ledit" CC="cc"
 
 generic: $(ALL)
 
 Linux linux:	linux-noreadline
 
 linux-noreadline:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_LINUX" SYSLIBS="-ldl"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_LINUX" SYSLIBS="-ldl"
 
 linux-readline:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_LINUX -DMASK_USE_READLINE" SYSLIBS="-ldl -lreadline"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_LINUX -DHELLO_USE_READLINE" SYSLIBS="-ldl -lreadline"
 
 Darwin macos macosx:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_MACOSX -DMASK_USE_READLINE" SYSLIBS="-lreadline"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_MACOSX -DHELLO_USE_READLINE" SYSLIBS="-lreadline"
 
 mingw:
-	$(MAKE) "MASK_A=libmask.dll" "MASK_T=mask.exe" \
+	$(MAKE) "HELLO_A=libhello.dll" "HELLO_T=hello.exe" \
 	"AR=$(CXX) -shared -o" "RANLIB=strip --strip-unneeded" \
-	"SYSCFLAGS=-DMASK_BUILD_AS_DLL" "SYSLIBS=" "SYSLDFLAGS=-s" mask.exe
-	$(MAKE) "MASKC_T=maskc.exe" maskc.exe
+	"SYSCFLAGS=-DHELLO_BUILD_AS_DLL" "SYSLIBS=" "SYSLDFLAGS=-s" hello.exe
+	$(MAKE) "HELLOC_T=helloc.exe" helloc.exe
 
 posix:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_POSIX"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_POSIX"
 
 SunOS solaris:
-	$(MAKE) $(ALL) SYSCFLAGS="-DMASK_USE_POSIX -DMASK_USE_DLOPEN -D_REENTRANT" SYSLIBS="-ldl"
+	$(MAKE) $(ALL) SYSCFLAGS="-DHELLO_USE_POSIX -DHELLO_USE_DLOPEN -D_REENTRANT" SYSLIBS="-ldl"
 
 # Targets that do not create files (not all makes understand .PHONY).
 .PHONY: all $(PLATS) help test clean default o a depend echo
@@ -151,69 +152,69 @@ lcode.o:
 
 # DO NOT DELETE
 
-lapi.o: lapi.cpp lprefix.h mask.h maskconf.h lapi.h llimits.h lstate.h \
+lapi.o: lapi.cpp lprefix.h hello.h helloconf.h lapi.h llimits.h lstate.h \
  lobject.h ltm.h lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h lstring.h \
  ltable.h lundump.h lvm.h
-lauxlib.o: lauxlib.cpp lprefix.h mask.h maskconf.h lauxlib.h
-lbaselib.o: lbaselib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lcode.o: lcode.cpp lprefix.h mask.h maskconf.h lcode.h llex.h lobject.h \
+lauxlib.o: lauxlib.cpp lprefix.h hello.h helloconf.h lauxlib.h
+lbaselib.o: lbaselib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lcode.o: lcode.cpp lprefix.h hello.h helloconf.h lcode.h llex.h lobject.h \
  llimits.h lzio.h lmem.h lopcodes.h lparser.h ldebug.h lstate.h ltm.h \
  ldo.h lgc.h lstring.h ltable.h lvm.h
-lcorolib.o: lcorolib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lctype.o: lctype.cpp lprefix.h lctype.h mask.h maskconf.h llimits.h
-ldblib.o: ldblib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-ldebug.o: ldebug.cpp lprefix.h mask.h maskconf.h lapi.h llimits.h lstate.h \
+lcorolib.o: lcorolib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lctype.o: lctype.cpp lprefix.h lctype.h hello.h helloconf.h llimits.h
+ldblib.o: ldblib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+ldebug.o: ldebug.cpp lprefix.h hello.h helloconf.h lapi.h llimits.h lstate.h \
  lobject.h ltm.h lzio.h lmem.h lcode.h llex.h lopcodes.h lparser.h \
  ldebug.h ldo.h lfunc.h lstring.h lgc.h ltable.h lvm.h
-ldo.o: ldo.cpp lprefix.h mask.h maskconf.h lapi.h llimits.h lstate.h \
+ldo.o: ldo.cpp lprefix.h hello.h helloconf.h lapi.h llimits.h lstate.h \
  lobject.h ltm.h lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h lopcodes.h \
  lparser.h lstring.h ltable.h lundump.h lvm.h
-ldump.o: ldump.cpp lprefix.h mask.h maskconf.h lobject.h llimits.h lstate.h \
+ldump.o: ldump.cpp lprefix.h hello.h helloconf.h lobject.h llimits.h lstate.h \
  ltm.h lzio.h lmem.h lundump.h
-lfunc.o: lfunc.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+lfunc.o: lfunc.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lfunc.h lgc.h
-lgc.o: lgc.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+lgc.o: lgc.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lfunc.h lgc.h lstring.h ltable.h
-linit.o: linit.cpp lprefix.h mask.h maskconf.h masklib.h lauxlib.h
-liolib.o: liolib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-llex.o: llex.cpp lprefix.h mask.h maskconf.h lctype.h llimits.h ldebug.h \
+linit.o: linit.cpp lprefix.h hello.h helloconf.h hellolib.h lauxlib.h
+liolib.o: liolib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+llex.o: llex.cpp lprefix.h hello.h helloconf.h lctype.h llimits.h ldebug.h \
  lstate.h lobject.h ltm.h lzio.h lmem.h ldo.h lgc.h llex.h lparser.h \
  lstring.h ltable.h
-lmathlib.o: lmathlib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lmem.o: lmem.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+lmathlib.o: lmathlib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lmem.o: lmem.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lgc.h
-loadlib.o: loadlib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lobject.o: lobject.cpp lprefix.h mask.h maskconf.h lctype.h llimits.h \
+loadlib.o: loadlib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lobject.o: lobject.cpp lprefix.h hello.h helloconf.h lctype.h llimits.h \
  ldebug.h lstate.h lobject.h ltm.h lzio.h lmem.h ldo.h lstring.h lgc.h \
  lvm.h
-lopcodes.o: lopcodes.cpp lprefix.h lopcodes.h llimits.h mask.h maskconf.h
-loslib.o: loslib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lparser.o: lparser.cpp lprefix.h mask.h maskconf.h lcode.h llex.h lobject.h \
+lopcodes.o: lopcodes.cpp lprefix.h lopcodes.h llimits.h hello.h helloconf.h
+loslib.o: loslib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lparser.o: lparser.cpp lprefix.h hello.h helloconf.h lcode.h llex.h lobject.h \
  llimits.h lzio.h lmem.h lopcodes.h lparser.h ldebug.h lstate.h ltm.h \
  ldo.h lfunc.h lstring.h lgc.h ltable.h
-lstate.o: lstate.cpp lprefix.h mask.h maskconf.h lapi.h llimits.h lstate.h \
+lstate.o: lstate.cpp lprefix.h hello.h helloconf.h lapi.h llimits.h lstate.h \
  lobject.h ltm.h lzio.h lmem.h ldebug.h ldo.h lfunc.h lgc.h llex.h \
  lstring.h ltable.h
-lstring.o: lstring.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h \
+lstring.o: lstring.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h \
  lobject.h llimits.h ltm.h lzio.h lmem.h ldo.h lstring.h lgc.h
-lstrlib.o: lstrlib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lcryptolib.o: lcryptolib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h lcryptolib.hpp
-ltable.o: ltable.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+lstrlib.o: lstrlib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lcryptolib.o: lcryptolib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h lcryptolib.hpp
+ltable.o: ltable.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lgc.h lstring.h ltable.h lvm.h
-ltablib.o: ltablib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-ltm.o: ltm.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+ltablib.o: ltablib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+ltm.o: ltm.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lgc.h lstring.h ltable.h lvm.h
-mask.o: mask.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-maskc.o: maskc.cpp lprefix.h mask.h maskconf.h lauxlib.h ldebug.h lstate.h \
+hello.o: hello.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+helloc.o: helloc.cpp lprefix.h hello.h helloconf.h lauxlib.h ldebug.h lstate.h \
  lobject.h llimits.h ltm.h lzio.h lmem.h lopcodes.h lopnames.h lundump.h
-lundump.o: lundump.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h \
+lundump.o: lundump.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h \
  lobject.h llimits.h ltm.h lzio.h lmem.h ldo.h lfunc.h lstring.h lgc.h \
  lundump.h
-lutf8lib.o: lutf8lib.cpp lprefix.h mask.h maskconf.h lauxlib.h masklib.h
-lvm.o: lvm.cpp lprefix.h mask.h maskconf.h ldebug.h lstate.h lobject.h \
+lutf8lib.o: lutf8lib.cpp lprefix.h hello.h helloconf.h lauxlib.h hellolib.h
+lvm.o: lvm.cpp lprefix.h hello.h helloconf.h ldebug.h lstate.h lobject.h \
  llimits.h ltm.h lzio.h lmem.h ldo.h lfunc.h lgc.h lopcodes.h lstring.h \
  ltable.h lvm.h ljumptab.h ljumptabgcc.h
-lzio.o: lzio.cpp lprefix.h mask.h maskconf.h llimits.h lmem.h lstate.h \
+lzio.o: lzio.cpp lprefix.h hello.h helloconf.h llimits.h lmem.h lstate.h \
  lobject.h ltm.h lzio.h
 
 # (end of Makefile)

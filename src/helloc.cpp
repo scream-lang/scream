@@ -1,11 +1,11 @@
 /*
-** $Id: maskc.c $
-** Mask compiler (saves bytecodes to files; also lists bytecodes)
-** See Copyright Notice in mask.h
+** $Id: helloc.c $
+** Hello compiler (saves bytecodes to files; also lists bytecodes)
+** See Copyright Notice in hello.h
 */
 
-#define maskc_c
-#define MASK_CORE
+#define helloc_c
+#define HELLO_CORE
 
 #include "lprefix.h"
 
@@ -19,7 +19,7 @@
 #include <vector>
 #endif
 
-#include "mask.h"
+#include "hello.h"
 #include "lauxlib.h"
 
 #include "ldebug.h"
@@ -30,9 +30,9 @@
 #include "lundump.h"
 
 static void PrintFunction(const Proto* f, int full);
-#define maskU_print	PrintFunction
+#define helloU_print	PrintFunction
 
-#define PROGNAME	"maskc"		/* default program name */
+#define PROGNAME	"helloc"		/* default program name */
 #define OUTPUT		PROGNAME ".out"	/* default output file */
 
 static int listing=0;			/* list bytecodes? */
@@ -119,7 +119,7 @@ static int doargs(int argc, char* argv[])
  }
  if (version)
  {
-  printf("%s\n",MASK_COPYRIGHT);
+  printf("%s\n",HELLO_COPYRIGHT);
   if (version==argc-1) exit(EXIT_SUCCESS);
  }
  return i;
@@ -127,7 +127,7 @@ static int doargs(int argc, char* argv[])
 
 #define FUNCTION "(function()end)();"
 
-static const char* reader(mask_State* L, void* ud, size_t* size)
+static const char* reader(hello_State* L, void* ud, size_t* size)
 {
  UNUSED(L);
  if ((*(int*)ud)--)
@@ -144,7 +144,7 @@ static const char* reader(mask_State* L, void* ud, size_t* size)
 
 #define toproto(L,i) getproto(s2v(L->top+(i)))
 
-static const Proto* combine(mask_State* L, int n)
+static const Proto* combine(hello_State* L, int n)
 {
  if (n==1)
   return toproto(L,-1);
@@ -152,48 +152,48 @@ static const Proto* combine(mask_State* L, int n)
  {
   Proto* f;
   int i=n;
-  if (mask_load(L,reader,&i,"=(" PROGNAME ")",NULL)!=MASK_OK) fatal(mask_tostring(L,-1));
+  if (hello_load(L,reader,&i,"=(" PROGNAME ")",NULL)!=HELLO_OK) fatal(hello_tostring(L,-1));
   f=toproto(L,-1);
   for (i=0; i<n; i++)
   {
    f->p[i]=toproto(L,i-n-1);
    if (f->p[i]->sizeupvalues>0) f->p[i]->upvalues[0].instack=0;
   }
-  maskM_freearray(L,f->lineinfo,f->sizelineinfo);
+  helloM_freearray(L,f->lineinfo,f->sizelineinfo);
   f->lineinfo = nullptr;
   f->sizelineinfo = 0;
   return f;
  }
 }
 
-static int writer(mask_State* L, const void* p, size_t size, void* u)
+static int writer(hello_State* L, const void* p, size_t size, void* u)
 {
  UNUSED(L);
  return (fwrite(p,size,1,(FILE*)u)!=1) && (size!=0);
 }
 
-static int pmain(mask_State* L)
+static int pmain(hello_State* L)
 {
- int argc=(int)mask_tointeger(L,1);
- char** argv=(char**)mask_touserdata(L,2);
+ int argc=(int)hello_tointeger(L,1);
+ char** argv=(char**)hello_touserdata(L,2);
  const Proto* f;
  int i;
  tmname=G(L)->tmname;
- if (!mask_checkstack(L,argc)) fatal("too many input files");
+ if (!hello_checkstack(L,argc)) fatal("too many input files");
  for (i=0; i<argc; i++)
  {
   const char* filename=IS("-") ? NULL : argv[i];
-  if (maskL_loadfile(L,filename)!=MASK_OK) fatal(mask_tostring(L,-1));
+  if (helloL_loadfile(L,filename)!=HELLO_OK) fatal(hello_tostring(L,-1));
  }
  f=combine(L,argc);
- if (listing) maskU_print(f,listing>1);
+ if (listing) helloU_print(f,listing>1);
  if (dumping)
  {
-  FILE* D= (output==NULL) ? stdout : maskL_fopen(output,strlen(output),"wb",sizeof("wb")-sizeof(char));
+  FILE* D= (output==NULL) ? stdout : helloL_fopen(output,strlen(output),"wb",sizeof("wb")-sizeof(char));
   if (D==NULL) cannot("open");
-  mask_lock(L);
-  maskU_dump(L,f,writer,D,stripping);
-  mask_unlock(L);
+  hello_lock(L);
+  helloU_dump(L,f,writer,D,stripping);
+  hello_unlock(L);
   if (ferror(D)) cannot("write");
   if (fclose(D)) cannot("close");
  }
@@ -205,23 +205,23 @@ int wmain (int argc, wchar_t **wargv) {
   std::vector<char*> argv_arr; argv_arr.reserve(argc);
   std::vector<std::string> argv_buf; argv_buf.reserve(argc);
   for (int i = 0; i != argc; ++i) {
-    argv_arr.emplace_back(argv_buf.emplace_back(maskL_utf16_to_utf8(wargv[i], wcslen(wargv[i]))).data());
+    argv_arr.emplace_back(argv_buf.emplace_back(helloL_utf16_to_utf8(wargv[i], wcslen(wargv[i]))).data());
   }
   char **argv = &argv_arr[0];
 #else
 int main (int argc, char **argv) {
 #endif
- mask_State* L;
+ hello_State* L;
  int i=doargs(argc,argv);
  argc-=i; argv+=i;
  if (argc<=0) usage("no input files given");
- L=maskL_newstate();
+ L=helloL_newstate();
  if (L==NULL) fatal("cannot create state: not enough memory");
- mask_pushcfunction(L,&pmain);
- mask_pushinteger(L,argc);
- mask_pushlightuserdata(L,argv);
- if (mask_pcall(L,2,0,0)!=MASK_OK) fatal(mask_tostring(L,-1));
- mask_close(L);
+ hello_pushcfunction(L,&pmain);
+ hello_pushinteger(L,argc);
+ hello_pushlightuserdata(L,argv);
+ if (hello_pcall(L,2,0,0)!=HELLO_OK) fatal(hello_tostring(L,-1));
+ hello_close(L);
  return EXIT_SUCCESS;
 }
 
@@ -283,21 +283,21 @@ static void PrintType(const Proto* f, int i)
  const TValue* o=&f->k[i];
  switch (ttypetag(o))
  {
-  case MASK_VNIL:
+  case HELLO_VNIL:
     printf("N");
     break;
-  case MASK_VFALSE:
-  case MASK_VTRUE:
+  case HELLO_VFALSE:
+  case HELLO_VTRUE:
     printf("B");
     break;
-  case MASK_VNUMFLT:
+  case HELLO_VNUMFLT:
     printf("F");
     break;
-  case MASK_VNUMINT:
+  case HELLO_VNUMINT:
     printf("I");
     break;
-  case MASK_VSHRSTR:
-  case MASK_VLNGSTR:
+  case HELLO_VSHRSTR:
+  case HELLO_VLNGSTR:
     printf("S");
     break;
   default:				/* cannot happen */
@@ -312,28 +312,28 @@ static void PrintConstant(const Proto* f, int i)
  const TValue* o=&f->k[i];
  switch (ttypetag(o))
  {
-  case MASK_VNIL:
+  case HELLO_VNIL:
     printf("nil");
     break;
-  case MASK_VFALSE:
+  case HELLO_VFALSE:
     printf("false");
     break;
-  case MASK_VTRUE:
+  case HELLO_VTRUE:
     printf("true");
     break;
-  case MASK_VNUMFLT:
+  case HELLO_VNUMFLT:
     {
     char buff[100];
-    sprintf(buff,MASK_NUMBER_FMT,fltvalue(o));
+    sprintf(buff,HELLO_NUMBER_FMT,fltvalue(o));
     printf("%s",buff);
     if (buff[strspn(buff,"-0123456789")]=='\0') printf(".0");
     break;
     }
-  case MASK_VNUMINT:
-    printf(MASK_INTEGER_FMT, ivalue(o));
+  case HELLO_VNUMINT:
+    printf(HELLO_INTEGER_FMT, ivalue(o));
     break;
-  case MASK_VSHRSTR:
-  case MASK_VLNGSTR:
+  case HELLO_VSHRSTR:
+  case HELLO_VLNGSTR:
     PrintString(tsvalue(o));
     break;
   default:				/* cannot happen */
@@ -364,7 +364,7 @@ static void PrintCode(const Proto* f)
   int sc=GETARG_sC(i);
   int sbx=GETARG_sBx(i);
   int isk=GETARG_k(i);
-  int line=maskG_getfuncline(f,pc);
+  int line=helloG_getfuncline(f,pc);
   printf("\t%d\t",pc+1);
   if (line>0) printf("[%d]\t",line); else printf("[-]\t");
   printf("%-9s\t",opnames[o]);
@@ -691,7 +691,7 @@ static void PrintHeader(const Proto* f)
  const char* s=f->source ? getstr(f->source) : "=?";
  if (*s=='@' || *s=='=')
   s++;
- else if (*s==MASK_SIGNATURE[0])
+ else if (*s==HELLO_SIGNATURE[0])
   s="(bstring)";
  else
   s="(string)";

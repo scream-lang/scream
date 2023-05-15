@@ -1,11 +1,11 @@
 /*
 ** $Id: lparser.c $
-** Mask Parser
-** See Copyright Notice in mask.h
+** Hello Parser
+** See Copyright Notice in hello.h
 */
 
 #define lparser_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "mask.h"
+#include "hello.h"
 #include "lcode.h"
 #include "ldebug.h"
 #include "ldo.h"
@@ -42,9 +42,9 @@
 
 
 /*
-** Invokes the mask_writestring macro with a std::string.
+** Invokes the hello_writestring macro with a std::string.
 */
-#define write_std_string(std_string) mask_writestring(std_string.data(), std_string.size())
+#define write_std_string(std_string) hello_writestring(std_string.data(), std_string.size())
 
 
 /* because all strings are unified by the scanner, the parser
@@ -52,7 +52,7 @@
 #define eqstr(a,b)	((a) == (b))
 
 
-#define maskO_fmt maskO_pushfstring
+#define helloO_fmt helloO_pushfstring
 
 
 /*
@@ -80,12 +80,12 @@ static void expr (LexState *ls, expdesc *v, TypeDesc *prop = nullptr, bool no_co
 
 
 /*
-** Throws an exception into Mask, which will promptly close the program.
+** Throws an exception into Hello, which will promptly close the program.
 ** This is only called for vital errors, like lexer and/or syntax problems.
 */
 [[noreturn]] static void throwerr (LexState *ls, const char *err, const char *here, int line) {
-  err = maskG_addinfo(ls->L, err, ls->source, line);
-  Mask::ErrorMessage msg{ ls, HRED "syntax error: " BWHT }; // We'll only throw syntax errors if 'throwerr' is called
+  err = helloG_addinfo(ls->L, err, ls->source, line);
+  Hello::ErrorMessage msg{ ls, HRED "syntax error: " BWHT }; // We'll only throw syntax errors if 'throwerr' is called
   msg.addMsg(err)
     .addSrcLine(line)
     .addGenericHere(here)
@@ -97,12 +97,12 @@ static void expr (LexState *ls, expdesc *v, TypeDesc *prop = nullptr, bool no_co
 }
 
 
-#ifndef MASK_NO_PARSER_WARNINGS
+#ifndef HELLO_NO_PARSER_WARNINGS
 // No note.
 static void throw_warn (LexState *ls, const char *raw_err, const char *here, int line, WarningType warningType) {
   std::string err(raw_err);
   if (ls->shouldEmitWarning(line, warningType)) {
-    Mask::ErrorMessage msg{ ls, maskG_addinfo(ls->L, YEL "warning: " BWHT, ls->source, line) };
+    Hello::ErrorMessage msg{ ls, helloG_addinfo(ls->L, YEL "warning: " BWHT, ls->source, line) };
     err.append(" [");
     err.append(ls->getWarningConfig().getWarningName(warningType));
     err.push_back(']');
@@ -110,8 +110,8 @@ static void throw_warn (LexState *ls, const char *raw_err, const char *here, int
       .addSrcLine(line)
       .addGenericHere(here)
       .finalize();
-    mask_warning(ls->L, msg.content.c_str(), 0);
-    ls->L->top -= 2; // Mask::Error::finalize & maskG_addinfo
+    hello_warning(ls->L, msg.content.c_str(), 0);
+    ls->L->top -= 2; // Hello::Error::finalize & helloG_addinfo
   }
 }
 
@@ -119,7 +119,7 @@ static void throw_warn (LexState *ls, const char *raw_err, const char *here, int
 static void throw_warn(LexState* ls, const char* raw_err, const char* here, const char* note, int line, WarningType warningType) {
   std::string err(raw_err);
   if (ls->shouldEmitWarning(line, warningType)) {
-    Mask::ErrorMessage msg{ ls, maskG_addinfo(ls->L, YEL "warning: " BWHT, ls->source, line) };
+    Hello::ErrorMessage msg{ ls, helloG_addinfo(ls->L, YEL "warning: " BWHT, ls->source, line) };
     err.append(" [");
     err.append(ls->getWarningConfig().getWarningName(warningType));
     err.push_back(']');
@@ -128,8 +128,8 @@ static void throw_warn(LexState* ls, const char* raw_err, const char* here, cons
       .addGenericHere(here)
       .addNote(note)
       .finalize();
-    mask_warning(ls->L, msg.content.c_str(), 0);
-    ls->L->top -= 2; // Mask::Error::finalize & maskG_addinfo
+    hello_warning(ls->L, msg.content.c_str(), 0);
+    ls->L->top -= 2; // Hello::Error::finalize & helloG_addinfo
   }
 }
 
@@ -140,8 +140,8 @@ static void throw_warn(LexState *ls, const char* err, const char *here, WarningT
 // TO-DO: Warning suppression attribute support for this overload. Don't know where it's used atm.
 static void throw_warn(LexState *ls, const char *err, int line, WarningType warningType) {
   if (ls->shouldEmitWarning(line, warningType)) {
-    auto msg = maskG_addinfo(ls->L, err, ls->source, line);
-    mask_warning(ls->L, msg, 0);
+    auto msg = helloG_addinfo(ls->L, err, ls->source, line);
+    hello_warning(ls->L, msg, 0);
     ls->L->top -= 1; /* remove warning from stack */
   }
 }
@@ -159,7 +159,7 @@ static void throw_warn(LexState *ls, const char *err, int line, WarningType warn
         "expected '|' to begin & terminate the lambda's paramater list.");
     }
     case '-': {
-      if (maskX_lookahead(ls) == '>') {
+      if (helloX_lookahead(ls) == '>') {
         throwerr(ls,
           "impromper lambda definition",
           "expected '->' arrow syntax for lambda expression.");
@@ -193,23 +193,23 @@ static void throw_warn(LexState *ls, const char *err, int line, WarningType warn
     default: {
       _default:
       throwerr(ls,
-        maskO_fmt(ls->L, "%s expected (got %s)",
-          maskX_token2str(ls, token), maskX_token2str(ls, ls->t.token)), "this is invalid syntax.");
+        helloO_fmt(ls->L, "%s expected (got %s)",
+          helloX_token2str(ls, token), helloX_token2str(ls, ls->t.token)), "this is invalid syntax.");
     }
   }
 }
 
 
 [[noreturn]] static void errorlimit (FuncState *fs, int limit, const char *what) {
-  mask_State *L = fs->ls->L;
+  hello_State *L = fs->ls->L;
   const char *msg;
   int line = fs->f->linedefined;
   const char *where = (line == 0)
                       ? "main function"
-                      : maskO_pushfstring(L, "function at line %d", line);
-  msg = maskO_pushfstring(L, "too many %s (limit is %d) in %s",
+                      : helloO_pushfstring(L, "function at line %d", line);
+  msg = helloO_pushfstring(L, "too many %s (limit is %d) in %s",
                              what, limit, where);
-  maskX_syntaxerror(fs->ls, msg);
+  helloX_syntaxerror(fs->ls, msg);
 }
 
 
@@ -223,7 +223,7 @@ static void checklimit (FuncState *fs, int v, int l, const char *what) {
 */
 static int testnext (LexState *ls, int c) {
   if (ls->t.token == c) {
-    maskX_next(ls);
+    helloX_next(ls);
     return 1;
   }
   else return 0;
@@ -245,11 +245,11 @@ static void check (LexState *ls, int c) {
 */
 static void checknext (LexState *ls, int c) {
   check(ls, c);
-  maskX_next(ls);
+  helloX_next(ls);
 }
 
 
-#define check_condition(ls,c,msg)	{ if (!(c)) maskX_syntaxerror(ls, msg); }
+#define check_condition(ls,c,msg)	{ if (!(c)) helloX_syntaxerror(ls, msg); }
 
 
 /*
@@ -264,7 +264,7 @@ static void check_match (LexState *ls, int what, int who, int where) {
     else {
       if (what == TK_END) {
         std::string msg = "missing 'end' to terminate ";
-        msg.append(maskX_token2str(ls, who));
+        msg.append(helloX_token2str(ls, who));
         if (who != TK_BEGIN) {
           msg.append(" block");
         }
@@ -273,10 +273,10 @@ static void check_match (LexState *ls, int what, int who, int where) {
         throwerr(ls, msg.c_str(), "this was the last statement.", ls->getLineNumberOfLastNonEmptyLine());
       }
       else {
-        Mask::ErrorMessage err{ ls, RED "syntax error: " BWHT }; // Doesn't use throwerr since I replicated old code. Couldn't find problematic code to repro error, so went safe.
-        err.addMsg(maskX_token2str(ls, what))
+        Hello::ErrorMessage err{ ls, RED "syntax error: " BWHT }; // Doesn't use throwerr since I replicated old code. Couldn't find problematic code to repro error, so went safe.
+        err.addMsg(helloX_token2str(ls, what))
           .addMsg(" expected (to close ")
-          .addMsg(maskX_token2str(ls, who))
+          .addMsg(helloX_token2str(ls, who))
           .addMsg(" on line ")
           .addMsg(std::to_string(where))
           .addMsg(")")
@@ -300,7 +300,7 @@ static TString *str_checkname (LexState *ls, bool strict = false) {
     error_expected(ls, TK_NAME);
   }
   ts = ls->t.seminfo.ts;
-  maskX_next(ls);
+  helloX_next(ls);
   return ts;
 }
 
@@ -331,20 +331,20 @@ static void codename (LexState *ls, expdesc *e) {
 static int registerlocalvar (LexState *ls, FuncState *fs, TString *varname) {
   Proto *f = fs->f;
   int oldsize = f->sizelocvars;
-  maskM_growvector(ls->L, f->locvars, fs->ndebugvars, f->sizelocvars,
+  helloM_growvector(ls->L, f->locvars, fs->ndebugvars, f->sizelocvars,
                   LocVar, SHRT_MAX, "local variables");
   while (oldsize < f->sizelocvars)
     f->locvars[oldsize++].varname = NULL;
   f->locvars[fs->ndebugvars].varname = varname;
   f->locvars[fs->ndebugvars].startpc = fs->pc;
-  maskC_objbarrier(ls->L, f, varname);
+  helloC_objbarrier(ls->L, f, varname);
   return fs->ndebugvars++;
 }
 
 
 #define new_localvarliteral(ls,v) \
     new_localvar(ls,  \
-      maskX_newstring(ls, "" v, (sizeof(v)/sizeof(char)) - 1));
+      helloX_newstring(ls, "" v, (sizeof(v)/sizeof(char)) - 1));
 
 
 [[nodiscard]] static TypeDesc gettypehint(LexState *ls) noexcept {
@@ -363,9 +363,9 @@ static int registerlocalvar (LexState *ls, FuncState *fs, TString *varname) {
     else if (strcmp(tname, "function") == 0)
       return { VT_FUNC, nullable };
     else if (strcmp(tname, "userdata") != 0) {
-      maskX_prev(ls);
+      helloX_prev(ls);
       throw_warn(ls, "unknown type hint", "the type hinted here is unknown to the parser.", TYPE_MISMATCH);
-      maskX_next(ls); // Preserve a6c8e359857644f4311c022f85cf19d85d95c25d
+      helloX_next(ls); // Preserve a6c8e359857644f4311c022f85cf19d85d95c25d
     }
   }
   return VT_DUNNO;
@@ -380,19 +380,19 @@ static void exp_propagate(LexState* ls, const expdesc& e, TypeDesc& t) noexcept 
     TValue* val = &ls->dyd->actvar.arr[e.u.info].k;
     switch (ttype(val))
     {
-    case MASK_TNIL: t = VT_NIL; break;
-    case MASK_TBOOLEAN: t = VT_BOOL; break;
-    case MASK_TNUMBER: t = ((ttypetag(val) == MASK_VNUMINT) ? VT_INT : VT_FLT); break;
-    case MASK_TSTRING: t = VT_STR; break;
-    case MASK_TTABLE: t = VT_TABLE; break;
-    case MASK_TFUNCTION: t = VT_FUNC; break;
+    case HELLO_TNIL: t = VT_NIL; break;
+    case HELLO_TBOOLEAN: t = VT_BOOL; break;
+    case HELLO_TNUMBER: t = ((ttypetag(val) == HELLO_VNUMINT) ? VT_INT : VT_FLT); break;
+    case HELLO_TSTRING: t = VT_STR; break;
+    case HELLO_TTABLE: t = VT_TABLE; break;
+    case HELLO_TFUNCTION: t = VT_FUNC; break;
     }
   }
 }
 
 
 static void process_assign(LexState* ls, Vardesc* var, const TypeDesc& td, int line) {
-#ifndef MASK_NO_PARSER_WARNINGS
+#ifndef HELLO_NO_PARSER_WARNINGS
   auto hinted = var->vd.hint.getType() != VT_DUNNO;
   auto knownvalue = td.getType() != VT_DUNNO;
   auto incompatible = !var->vd.hint.isCompatibleWith(td);
@@ -405,8 +405,8 @@ static void process_assign(LexState* ls, Vardesc* var, const TypeDesc& td, int l
     err.append(td.toString());
     err.append(" value.");
     if (td.getType() == VT_NIL) {  /* Specialize warnings for nullable state incompatibility. */
-      throw_warn(ls, "variable type mismatch", err.c_str(), maskO_fmt(ls->L, "try a nilable type hint: '?%s'", hint.c_str()), line, TYPE_MISMATCH);
-      ls->L->top--; // maskO_fmt
+      throw_warn(ls, "variable type mismatch", err.c_str(), helloO_fmt(ls->L, "try a nilable type hint: '?%s'", hint.c_str()), line, TYPE_MISMATCH);
+      ls->L->top--; // helloO_fmt
     }
     else {  /* Throw a generic mismatch warning. */
       throw_warn(ls, "variable type mismatch", err.c_str(), line, TYPE_MISMATCH);
@@ -436,7 +436,7 @@ static int reglevel (FuncState *fs, int nvar) {
 ** Return the number of variables in the register stack for the given
 ** function.
 */
-int maskY_nvarstack (FuncState *fs) {
+int helloY_nvarstack (FuncState *fs) {
   return reglevel(fs, fs->nactvar);
 }
 
@@ -450,7 +450,7 @@ static LocVar *localdebuginfo (FuncState *fs, int vidx) {
     return NULL;  /* no debug info. for constants */
   else {
     int idx = vd->vd.pidx;
-    mask_assert(idx < fs->ndebugvars);
+    hello_assert(idx < fs->ndebugvars);
     return &fs->f->locvars[idx];
   }
 }
@@ -461,12 +461,12 @@ static LocVar *localdebuginfo (FuncState *fs, int vidx) {
 ** in the function.
 */
 static int new_localvar (LexState *ls, TString *name, int line, const TypeDesc& hint = VT_DUNNO) {
-  mask_State *L = ls->L;
+  hello_State *L = ls->L;
   FuncState *fs = ls->fs;
   Dyndata *dyd = ls->dyd;
   Vardesc *var;
-#ifndef MASK_NO_PARSER_WARNINGS
-  int locals = maskY_nvarstack(fs);
+#ifndef HELLO_NO_PARSER_WARNINGS
+  int locals = helloY_nvarstack(fs);
   for (int i = fs->firstlocal; i < locals; i++) {
     Vardesc *desc = getlocalvardesc(fs, i);
     LocVar *local = localdebuginfo(fs, i);
@@ -474,13 +474,13 @@ static int new_localvar (LexState *ls, TString *name, int line, const TypeDesc& 
     if ((n != "(for state)" && n != "(switch control value)") && (local && local->varname == name)) { // Got a match.
       throw_warn(ls,
         "duplicate local declaration",
-          maskO_fmt(L, "this shadows the initial declaration of '%s' on line %d.", name->contents, desc->vd.line), line, VAR_SHADOW);
-      L->top--; /* pop result of maskO_fmt */
+          helloO_fmt(L, "this shadows the initial declaration of '%s' on line %d.", name->contents, desc->vd.line), line, VAR_SHADOW);
+      L->top--; /* pop result of helloO_fmt */
       break;
     }
   }
 #endif
-  maskM_growvector(L, dyd->actvar.arr, dyd->actvar.n + 1,
+  helloM_growvector(L, dyd->actvar.arr, dyd->actvar.n + 1,
                   dyd->actvar.size, Vardesc, USHRT_MAX, "local variables");
   var = &dyd->actvar.arr[dyd->actvar.n++];
   var->vd.kind = VDKREG;  /* default */
@@ -534,9 +534,9 @@ static void check_readonly (LexState *ls, expdesc *e) {
       return;  /* other cases cannot be read-only */
   }
   if (varname) {
-    const char *msg = maskO_fmt(ls->L, "attempt to reassign constant '%s'", getstr(varname));
+    const char *msg = helloO_fmt(ls->L, "attempt to reassign constant '%s'", getstr(varname));
     const char *here = "this variable is constant, and cannot be reassigned.";
-    throwerr(ls, maskO_fmt(ls->L, msg, getstr(varname)), here);
+    throwerr(ls, helloO_fmt(ls->L, msg, getstr(varname)), here);
   }
 }
 
@@ -546,7 +546,7 @@ static void check_readonly (LexState *ls, expdesc *e) {
 */
 static void adjustlocalvars (LexState *ls, int nvars) {
   FuncState *fs = ls->fs;
-  int reglevel = maskY_nvarstack(fs);
+  int reglevel = helloY_nvarstack(fs);
   int i;
   for (i = 0; i < nvars; i++) {
     int vidx = fs->nactvar++;
@@ -589,7 +589,7 @@ static Upvaldesc *allocupvalue (FuncState *fs) {
   Proto *f = fs->f;
   int oldsize = f->sizeupvalues;
   checklimit(fs, fs->nups + 1, MAXUPVAL, "upvalues");
-  maskM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
+  helloM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
                   Upvaldesc, MAXUPVAL, "upvalues");
   while (oldsize < f->sizeupvalues)
     f->upvalues[oldsize++].name = NULL;
@@ -604,16 +604,16 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
     up->instack = 1;
     up->idx = v->u.var.ridx;
     up->kind = getlocalvardesc(prev, v->u.var.vidx)->vd.kind;
-    mask_assert(eqstr(name, getlocalvardesc(prev, v->u.var.vidx)->vd.name));
+    hello_assert(eqstr(name, getlocalvardesc(prev, v->u.var.vidx)->vd.name));
   }
   else {
     up->instack = 0;
     up->idx = cast_byte(v->u.info);
     up->kind = prev->f->upvalues[v->u.info].kind;
-    mask_assert(eqstr(name, prev->f->upvalues[v->u.info].name));
+    hello_assert(eqstr(name, prev->f->upvalues[v->u.info].name));
   }
   up->name = name;
-  maskC_objbarrier(fs->ls->L, fs->f, name);
+  helloC_objbarrier(fs->ls->L, fs->f, name);
   return fs->nups - 1;
 }
 
@@ -708,16 +708,16 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
     int extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
-    maskK_setreturns(fs, e, extra);  /* last exp. provides the difference */
+    helloK_setreturns(fs, e, extra);  /* last exp. provides the difference */
   }
   else {
     if (e->k != VVOID)  /* at least one expression? */
-      maskK_exp2nextreg(fs, e);  /* close last expression */
+      helloK_exp2nextreg(fs, e);  /* close last expression */
     if (needed > 0)  /* missing values? */
-      maskK_nil(fs, fs->freereg, needed);  /* complete with nils */
+      helloK_nil(fs, fs->freereg, needed);  /* complete with nils */
   }
   if (needed > 0)
-    maskK_reserveregs(fs, needed);  /* registers for extra values */
+    helloK_reserveregs(fs, needed);  /* registers for extra values */
   else  /* adding 'needed' is actually a subtraction */
     fs->freereg += needed;  /* remove extra values */
 }
@@ -733,16 +733,16 @@ static void singlevarinner (LexState *ls, TString *varname, expdesc *var) {
   if (var->k == VVOID) {  /* global name? */
     expdesc key;
     singlevaraux(fs, ls->envn, var, 1);  /* get environment variable */
-    mask_assert(var->k != VVOID);  /* this one must exist */
+    hello_assert(var->k != VVOID);  /* this one must exist */
     codestring(&key, varname);  /* key is variable name */
-    maskK_indexed(fs, var, &key);  /* env[varname] */
+    helloK_indexed(fs, var, &key);  /* env[varname] */
   }
 }
 
 static void singlevar (LexState *ls, expdesc *var) {
   TString *varname = str_checkname(ls);
   if (gett(ls) == TK_WALRUS) {
-    maskX_next(ls);
+    helloX_next(ls);
     if (ls->getContext() == PARCTX_CREATE_VARS)
       throwerr(ls, "unexpected ':=' while creating multiple variable", "unexpected ':='");
     if (ls->getContext() == PARCTX_FUNCARGS)
@@ -757,7 +757,7 @@ static void singlevar (LexState *ls, expdesc *var) {
 }
 
 
-#define enterlevel(ls)	maskE_incCstack(ls->L)
+#define enterlevel(ls)	helloE_incCstack(ls->L)
 
 
 #define leavelevel(ls) ((ls)->L->nCcalls--)
@@ -770,8 +770,8 @@ static void singlevar (LexState *ls, expdesc *var) {
 [[noreturn]] static void jumpscopeerror (LexState *ls, Labeldesc *gt) {
   const char *varname = getstr(getlocalvardesc(ls->fs, gt->nactvar)->vd.name);
   const char *msg = "<goto %s> at line %d jumps into the scope of local '%s'";
-  msg = maskO_pushfstring(ls->L, msg, getstr(gt->name), gt->line, varname);
-  maskK_semerror(ls, msg);  /* raise the error */
+  msg = helloO_pushfstring(ls->L, msg, getstr(gt->name), gt->line, varname);
+  helloK_semerror(ls, msg);  /* raise the error */
 }
 
 
@@ -784,10 +784,10 @@ static void solvegoto (LexState *ls, int g, Labeldesc *label) {
   int i;
   Labellist *gl = &ls->dyd->gt;  /* list of goto's */
   Labeldesc *gt = &gl->arr[g];  /* goto to be resolved */
-  mask_assert(eqstr(gt->name, label->name));
+  hello_assert(eqstr(gt->name, label->name));
   if (l_unlikely(gt->nactvar < label->nactvar))  /* enter some scope? */
     jumpscopeerror(ls, gt);
-  maskK_patchlist(ls->fs, gt->pc, label->pc);
+  helloK_patchlist(ls->fs, gt->pc, label->pc);
   for (i = g; i < gl->n - 1; i++)  /* remove goto from pending list */
     gl->arr[i] = gl->arr[i + 1];
   gl->n--;
@@ -816,7 +816,7 @@ static Labeldesc *findlabel (LexState *ls, TString *name) {
 static int newlabelentry (LexState *ls, Labellist *l, TString *name,
                           int line, int pc) {
   int n = l->n;
-  maskM_growvector(ls->L, l->arr, n, l->size,
+  helloM_growvector(ls->L, l->arr, n, l->size,
                   Labeldesc, SHRT_MAX, "labels/gotos");
   l->arr[n].name = name;
   l->arr[n].line = line;
@@ -865,13 +865,13 @@ static int createlabel (LexState *ls, TString *name, int line,
                         int last) {
   FuncState *fs = ls->fs;
   Labellist *ll = &ls->dyd->label;
-  int l = newlabelentry(ls, ll, name, line, maskK_getlabel(fs));
+  int l = newlabelentry(ls, ll, name, line, helloK_getlabel(fs));
   if (last) {  /* label is last no-op statement in the block? */
     /* assume that locals are already out of scope */
     ll->arr[l].nactvar = fs->bl->nactvar;
   }
   if (solvegotos(ls, &ll->arr[l])) {  /* need close? */
-    maskK_codeABC(fs, OP_CLOSE, maskY_nvarstack(fs), 0, 0);
+    helloK_codeABC(fs, OP_CLOSE, helloY_nvarstack(fs), 0, 0);
     return 1;
   }
   return 0;
@@ -906,7 +906,7 @@ static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
   bl->insidetbc = static_cast<lu_byte>(fs->bl != NULL && fs->bl->insidetbc);
   bl->previous = fs->bl;
   fs->bl = bl;
-  mask_assert(fs->freereg == maskY_nvarstack(fs));
+  hello_assert(fs->freereg == helloY_nvarstack(fs));
 }
 
 
@@ -915,15 +915,15 @@ static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
 */
 [[noreturn]] static void undefgoto (LexState *ls, Labeldesc *gt) {
   const char *msg;
-  if (eqstr(gt->name, maskS_newliteral(ls->L, "break"))) {
+  if (eqstr(gt->name, helloS_newliteral(ls->L, "break"))) {
     msg = "break outside loop at line %d";
-    msg = maskO_pushfstring(ls->L, msg, gt->line);
+    msg = helloO_pushfstring(ls->L, msg, gt->line);
   }
   else {
     msg = "no visible label '%s' for <goto> at line %d";
-    msg = maskO_pushfstring(ls->L, msg, getstr(gt->name), gt->line);
+    msg = helloO_pushfstring(ls->L, msg, getstr(gt->name), gt->line);
   }
-  maskK_semerror(ls, msg);
+  helloK_semerror(ls, msg);
 }
 
 
@@ -933,11 +933,11 @@ static void leaveblock (FuncState *fs) {
   int hasclose = 0;
   int stklevel = reglevel(fs, bl->nactvar);  /* level outside the block */
   removevars(fs, bl->nactvar);  /* remove block locals */
-  mask_assert(bl->nactvar == fs->nactvar);  /* back to level on entry */
+  hello_assert(bl->nactvar == fs->nactvar);  /* back to level on entry */
   if (bl->isloop)  /* has to fix pending breaks? */
-    hasclose = createlabel(ls, maskS_newliteral(ls->L, "break"), 0, 0);
+    hasclose = createlabel(ls, helloS_newliteral(ls->L, "break"), 0, 0);
   if (!hasclose && bl->previous && bl->upval)  /* still need a 'close'? */
-    maskK_codeABC(fs, OP_CLOSE, stklevel, 0, 0);
+    helloK_codeABC(fs, OP_CLOSE, stklevel, 0, 0);
   fs->freereg = stklevel;  /* free registers */
   ls->dyd->label.n = bl->firstlabel;  /* remove local labels */
   fs->bl = bl->previous;  /* current block now is previous one */
@@ -947,7 +947,7 @@ static void leaveblock (FuncState *fs) {
     if (bl->firstgoto < ls->dyd->gt.n)  /* still pending gotos? */
       undefgoto(ls, &ls->dyd->gt.arr[bl->firstgoto]);  /* error */
   }
-  maskK_patchtohere(fs, bl->breaklist);
+  helloK_patchtohere(fs, bl->breaklist);
   ls->laststat.token = TK_EOS;  /* Prevent unreachable code warnings on blocks that don't explicitly check for TK_END. */
 }
 
@@ -957,17 +957,17 @@ static void leaveblock (FuncState *fs) {
 */
 static Proto *addprototype (LexState *ls) {
   Proto *clp;
-  mask_State *L = ls->L;
+  hello_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;  /* prototype of current function */
   if (fs->np >= f->sizep) {
     int oldsize = f->sizep;
-    maskM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
+    helloM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
     while (oldsize < f->sizep)
       f->p[oldsize++] = NULL;
   }
-  f->p[fs->np++] = clp = maskF_newproto(L);
-  maskC_objbarrier(L, f, clp);
+  f->p[fs->np++] = clp = helloF_newproto(L);
+  helloC_objbarrier(L, f, clp);
   return clp;
 }
 
@@ -981,8 +981,8 @@ static Proto *addprototype (LexState *ls) {
 */
 static void codeclosure (LexState *ls, expdesc *v) {
   FuncState *fs = ls->fs->prev;
-  init_exp(v, VRELOC, maskK_codeABx(fs, OP_CLOSURE, 0, fs->np - 1));
-  maskK_exp2nextreg(fs, v);  /* fix it at the last register */
+  init_exp(v, VRELOC, helloK_codeABx(fs, OP_CLOSURE, 0, fs->np - 1));
+  helloK_exp2nextreg(fs, v);  /* fix it at the last register */
 }
 
 
@@ -1007,30 +1007,30 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->firstlabel = ls->dyd->label.n;
   fs->bl = NULL;
   f->source = ls->source;
-  maskC_objbarrier(ls->L, f, f->source);
+  helloC_objbarrier(ls->L, f, f->source);
   f->maxstacksize = 2;  /* registers 0/1 are always valid */
   enterblock(fs, bl, 0);
 }
 
 
 static void close_func (LexState *ls) {
-  mask_State *L = ls->L;
+  hello_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;
-  maskK_ret(fs, maskY_nvarstack(fs), 0);  /* final return */
+  helloK_ret(fs, helloY_nvarstack(fs), 0);  /* final return */
   leaveblock(fs);
-  mask_assert(fs->bl == NULL);
-  maskK_finish(fs);
-  maskM_shrinkvector(L, f->code, f->sizecode, fs->pc, Instruction);
-  maskM_shrinkvector(L, f->lineinfo, f->sizelineinfo, fs->pc, ls_byte);
-  maskM_shrinkvector(L, f->abslineinfo, f->sizeabslineinfo,
+  hello_assert(fs->bl == NULL);
+  helloK_finish(fs);
+  helloM_shrinkvector(L, f->code, f->sizecode, fs->pc, Instruction);
+  helloM_shrinkvector(L, f->lineinfo, f->sizelineinfo, fs->pc, ls_byte);
+  helloM_shrinkvector(L, f->abslineinfo, f->sizeabslineinfo,
                        fs->nabslineinfo, AbsLineInfo);
-  maskM_shrinkvector(L, f->k, f->sizek, fs->nk, TValue);
-  maskM_shrinkvector(L, f->p, f->sizep, fs->np, Proto *);
-  maskM_shrinkvector(L, f->locvars, f->sizelocvars, fs->ndebugvars, LocVar);
-  maskM_shrinkvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
+  helloM_shrinkvector(L, f->k, f->sizek, fs->nk, TValue);
+  helloM_shrinkvector(L, f->p, f->sizep, fs->np, Proto *);
+  helloM_shrinkvector(L, f->locvars, f->sizelocvars, fs->ndebugvars, LocVar);
+  helloM_shrinkvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
   ls->fs = fs->prev;
-  maskC_checkGC(L);
+  helloC_checkGC(L);
 }
 
 
@@ -1051,7 +1051,7 @@ static int block_follow (LexState *ls, int withuntil) {
     case TK_END: case TK_EOS:
       return 1;
     case TK_PWHEN:
-#ifndef MASK_COMPATIBLE_WHEN
+#ifndef HELLO_COMPATIBLE_WHEN
     case TK_WHEN:
 #endif
     case TK_UNTIL: return withuntil;
@@ -1104,20 +1104,20 @@ static void statlist (LexState *ls, TypeDesc *prop = nullptr, bool no_ret_implie
 ** Continue statement. Semantically similar to "goto continue".
 ** Unlike break, this doesn't use labels. It tracks where to jump via BlockCnt.scopeend;
 */
-static void continuestat (LexState *ls, mask_Integer backwards_surplus = 0) {
+static void continuestat (LexState *ls, hello_Integer backwards_surplus = 0) {
   auto line = ls->getLineNumber();
   FuncState *fs = ls->fs;
   BlockCnt *bl = fs->bl;
   int upval = 0;
   int foundloops = 0;
-  maskX_next(ls); /* skip TK_CONTINUE */
-  mask_Integer backwards = 1;
+  helloX_next(ls); /* skip TK_CONTINUE */
+  hello_Integer backwards = 1;
   if (ls->t.token == TK_INT) {
     backwards = ls->t.seminfo.i;
     if (backwards == 0) {
       throwerr(ls, "expected number of blocks to skip, found '0'", "unexpected '0'", line);
     }
-    maskX_next(ls);
+    helloX_next(ls);
   }
   backwards += backwards_surplus;
   while (bl) {
@@ -1137,8 +1137,8 @@ static void continuestat (LexState *ls, mask_Integer backwards_surplus = 0) {
     }
   }
   if (bl) {
-    if (upval) maskK_codeABC(fs, OP_CLOSE, bl->nactvar, 0, 0); /* close upvalues */
-    maskK_concat(fs, &bl->scopeend, maskK_jump(fs));
+    if (upval) helloK_codeABC(fs, OP_CLOSE, bl->nactvar, 0, 0); /* close upvalues */
+    helloK_concat(fs, &bl->scopeend, helloK_jump(fs));
   }
   else {
     if (foundloops == 0)
@@ -1147,19 +1147,19 @@ static void continuestat (LexState *ls, mask_Integer backwards_surplus = 0) {
       if (foundloops == 1) {
         throwerr(ls,
           "'continue' argument exceeds the amount of enclosing loops",
-            maskO_fmt(ls->L, "there is only 1 enclosing loop.", foundloops));
+            helloO_fmt(ls->L, "there is only 1 enclosing loop.", foundloops));
       }
       else {
         throwerr(ls,
           "'continue' argument exceeds the amount of enclosing loops",
-            maskO_fmt(ls->L, "there are only %d enclosing loops.", foundloops));
+            helloO_fmt(ls->L, "there are only %d enclosing loops.", foundloops));
       }
     }
   }
 }
 
 
-/* Switch logic partially inspired by Paige Marie DePol from the Mask mailing list. */
+/* Switch logic partially inspired by Paige Marie DePol from the Hello mailing list. */
 static void caselist (LexState *ls) {
   while (gett(ls) != TK_CASE
       && gett(ls) != TK_DEFAULT
@@ -1184,18 +1184,18 @@ static void fieldsel (LexState *ls, expdesc *v) {
   /* fieldsel -> ['.' | ':'] NAME */
   FuncState *fs = ls->fs;
   expdesc key;
-  maskK_exp2anyregup(fs, v);
-  maskX_next(ls);  /* skip the dot or colon */
+  helloK_exp2anyregup(fs, v);
+  helloX_next(ls);  /* skip the dot or colon */
   codename(ls, &key);
-  maskK_indexed(fs, v, &key);
+  helloK_indexed(fs, v, &key);
 }
 
 
 static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
-  maskX_next(ls);  /* skip the '[' */
+  helloX_next(ls);  /* skip the '[' */
   expr(ls, v);
-  maskK_exp2val(ls->fs, v);
+  helloK_exp2val(ls->fs, v);
   checknext(ls, ']');
 }
 
@@ -1230,9 +1230,9 @@ static void recfield (LexState *ls, ConsControl *cc) {
   cc->nh++;
   checknext(ls, '=');
   tab = *cc->t;
-  maskK_indexed(fs, &tab, &key);
+  helloK_indexed(fs, &tab, &key);
   expr(ls, &val);
-  maskK_storevar(fs, &tab, &val);
+  helloK_storevar(fs, &tab, &val);
   fs->freereg = reg;  /* free registers */
 }
 
@@ -1240,23 +1240,23 @@ static void prenamedfield(LexState* ls, ConsControl* cc, const char* name) {
   FuncState* fs = ls->fs;
   int reg = ls->fs->freereg;
   expdesc tab, key, val;
-  codestring(&key, maskX_newstring(ls, name));
+  codestring(&key, helloX_newstring(ls, name));
   cc->nh++;
-  maskX_next(ls); /* skip name token */
+  helloX_next(ls); /* skip name token */
   checknext(ls, '=');
   tab = *cc->t;
-  maskK_indexed(fs, &tab, &key);
+  helloK_indexed(fs, &tab, &key);
   expr(ls, &val);
-  maskK_storevar(fs, &tab, &val);
+  helloK_storevar(fs, &tab, &val);
   fs->freereg = reg;  /* free registers */
 }
 
 static void closelistfield (FuncState *fs, ConsControl *cc) {
   if (cc->v.k == VVOID) return;  /* there is no list item */
-  maskK_exp2nextreg(fs, &cc->v);
+  helloK_exp2nextreg(fs, &cc->v);
   cc->v.k = VVOID;
   if (cc->tostore == LFIELDS_PER_FLUSH) {
-    maskK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
+    helloK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);  /* flush */
     cc->na += cc->tostore;
     cc->tostore = 0;  /* no more items pending */
   }
@@ -1266,14 +1266,14 @@ static void closelistfield (FuncState *fs, ConsControl *cc) {
 static void lastlistfield (FuncState *fs, ConsControl *cc) {
   if (cc->tostore == 0) return;
   if (hasmultret(cc->v.k)) {
-    maskK_setmultret(fs, &cc->v);
-    maskK_setlist(fs, cc->t->u.info, cc->na, MASK_MULTRET);
+    helloK_setmultret(fs, &cc->v);
+    helloK_setlist(fs, cc->t->u.info, cc->na, HELLO_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
     if (cc->v.k != VVOID)
-      maskK_exp2nextreg(fs, &cc->v);
-    maskK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);
+      helloK_exp2nextreg(fs, &cc->v);
+    helloK_setlist(fs, cc->t->u.info, cc->na, cc->tostore);
   }
   cc->na += cc->tostore;
 }
@@ -1293,12 +1293,12 @@ static void funcfield (LexState *ls, struct ConsControl *cc) {
   int reg = ls->fs->freereg;
   expdesc tab, key, val;
   cc->nh++;
-  maskX_next(ls); /* skip TK_FUNCTION */
+  helloX_next(ls); /* skip TK_FUNCTION */
   codename(ls, &key);
   tab = *cc->t;
-  maskK_indexed(fs, &tab, &key);
+  helloK_indexed(fs, &tab, &key);
   body(ls, &val, true, ls->getLineNumber());
-  maskK_storevar(fs, &tab, &val);
+  helloK_storevar(fs, &tab, &val);
   fs->freereg = reg;  /* free registers */
 }
 
@@ -1307,7 +1307,7 @@ static void field (LexState *ls, ConsControl *cc) {
   /* field -> listfield | recfield | funcfield */
   switch(ls->t.token) {
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
-      if (maskX_lookahead(ls) != '=')  /* expression? */
+      if (helloX_lookahead(ls) != '=')  /* expression? */
         listfield(ls, cc);
       else
         recfield(ls, cc);
@@ -1318,7 +1318,7 @@ static void field (LexState *ls, ConsControl *cc) {
       break;
     }
     case TK_FUNCTION: {
-      if (maskX_lookahead(ls) == '(') {
+      if (helloX_lookahead(ls) == '(') {
         listfield(ls, cc);
       }
       else {
@@ -1328,7 +1328,7 @@ static void field (LexState *ls, ConsControl *cc) {
     }
     default: {
       if (ls->t.IsReservedNonValue()) {
-        prenamedfield(ls, cc, maskX_reserved2str(ls->t.token));
+        prenamedfield(ls, cc, helloX_reserved2str(ls->t.token));
       } else {
         listfield(ls, cc);
       }
@@ -1343,24 +1343,24 @@ static void constructor (LexState *ls, expdesc *t) {
      sep -> ',' | ';' */
   FuncState *fs = ls->fs;
   int line = ls->getLineNumber();
-  int pc = maskK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
+  int pc = helloK_codeABC(fs, OP_NEWTABLE, 0, 0, 0);
   ConsControl cc;
-  maskK_code(fs, 0);  /* space for extra arg. */
+  helloK_code(fs, 0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
   init_exp(t, VNONRELOC, fs->freereg);  /* table will be at stack top */
-  maskK_reserveregs(fs, 1);
+  helloK_reserveregs(fs, 1);
   init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
   checknext(ls, '{');
   do {
-    mask_assert(cc.v.k == VVOID || cc.tostore > 0);
+    hello_assert(cc.v.k == VVOID || cc.tostore > 0);
     if (ls->t.token == '}') break;
     closelistfield(fs, &cc);
     field(ls, &cc);
   } while (testnext(ls, ',') || testnext(ls, ';'));
   check_match(ls, '}', '{', line);
   lastlistfield(fs, &cc);
-  maskK_settablesize(fs, pc, t->u.info, cc.na, cc.nh);
+  helloK_settablesize(fs, pc, t->u.info, cc.na, cc.nh);
 }
 
 /* }====================================================================== */
@@ -1368,7 +1368,7 @@ static void constructor (LexState *ls, expdesc *t) {
 
 static void setvararg (FuncState *fs, int nparams) {
   fs->f->is_vararg = 1;
-  maskK_codeABC(fs, OP_VARARGPREP, nparams, 0, 0);
+  helloK_codeABC(fs, OP_VARARGPREP, nparams, 0, 0);
 }
 
 
@@ -1378,7 +1378,7 @@ static void simpleexp_with_unary_support (LexState *ls, expdesc *v) {
     check(ls, TK_INT);
     init_exp(v, VKINT, 0);
     v->u.ival = (ls->t.seminfo.i * -1);
-    maskX_next(ls);
+    helloX_next(ls);
   }
   else {
     testnext(ls, '+'); /* support pseudo-unary '+' */
@@ -1404,24 +1404,24 @@ static void parlist (LexState *ls, std::vector<expdesc>* fallbacks = nullptr) {
           if (testnext(ls, '=')) {
             simpleexp_with_unary_support(ls, parfallback);
             if (!vkisconst(parfallback->k)) {
-              maskX_syntaxerror(ls, "parameter fallback value must be a compile-time constant");
+              helloX_syntaxerror(ls, "parameter fallback value must be a compile-time constant");
             }
           }
         }
         nparams++;
       }
       else if (ls->t.token == TK_DOTS) {
-        maskX_next(ls);
+        helloX_next(ls);
         isvararg = 1;
       }
-      else maskX_syntaxerror(ls, "<name> or '...' expected");
+      else helloX_syntaxerror(ls, "<name> or '...' expected");
     } while (!isvararg && testnext(ls, ','));
   }
   adjustlocalvars(ls, nparams);
   f->numparams = cast_byte(fs->nactvar);
   if (isvararg)
     setvararg(fs, f->numparams);  /* declared vararg */
-  maskK_reserveregs(fs, fs->nactvar);  /* reserve registers for parameters */
+  helloK_reserveregs(fs, fs->nactvar);  /* reserve registers for parameters */
 }
 
 
@@ -1447,9 +1447,9 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line, TypeDesc *pr
       expdesc lv;
       singlevaraux(ls->fs, vd->vd.name, &lv, 1);
       expdesc lcond = lv;
-      maskK_goifnil(ls->fs, &lcond);
-      maskK_storevar(ls->fs, &lv, &fallback);
-      maskK_patchtohere(ls->fs, lcond.t);
+      helloK_goifnil(ls->fs, &lcond);
+      helloK_storevar(ls->fs, &lv, &fallback);
+      helloK_patchtohere(ls->fs, lcond.t);
     }
     ++fallback_idx;
   }
@@ -1457,7 +1457,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line, TypeDesc *pr
   TypeDesc rethint = gettypehint(ls);
   TypeDesc p = VT_DUNNO;
   statlist(ls, &p, true);
-#ifndef MASK_NO_PARSER_WARNINGS
+#ifndef HELLO_NO_PARSER_WARNINGS
   if (rethint.getType() != VT_DUNNO && /* has type hint for return type? */
       p.getType() != VT_DUNNO && /* return type is known? */
       !rethint.isCompatibleWith(p)) { /* incompatible? */
@@ -1504,7 +1504,7 @@ static void lambdabody (LexState *ls, expdesc *e, int line) {
   checknext(ls, '-');
   checknext(ls, '>');
   expr(ls, e);
-  maskK_ret(&new_fs, maskK_exp2anyreg(&new_fs, e), 1);
+  helloK_ret(&new_fs, helloK_exp2anyreg(&new_fs, e), 1);
   new_fs.f->lastlinedefined = ls->getLineNumber();
   codeclosure(ls, e);
   close_func(ls);
@@ -1521,7 +1521,7 @@ static int explist (LexState *ls, expdesc *v, std::vector<TypeDesc>& prop) {
   int n = 1;  /* at least one expression */
   expr_propagate(ls, v, prop.emplace_back(VT_DUNNO));
   while (testnext(ls, ',')) {
-    maskK_exp2nextreg(ls->fs, v);
+    helloK_exp2nextreg(ls->fs, v);
     expr_propagate(ls, v, prop.emplace_back(VT_DUNNO));
     n++;
   }
@@ -1533,7 +1533,7 @@ static int explist (LexState *ls, expdesc *v, TypeDesc *prop = nullptr) {
   int n = 1;  /* at least one expression */
   expr(ls, v, prop);
   while (testnext(ls, ',')) {
-    maskK_exp2nextreg(ls->fs, v);
+    helloK_exp2nextreg(ls->fs, v);
     expr(ls, v);
     n++;
   }
@@ -1548,13 +1548,13 @@ static void funcargs (LexState *ls, expdesc *f, int line, TypeDesc *funcdesc = n
   int base, nparams;
   switch (ls->t.token) {
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
-      maskX_next(ls);
+      helloX_next(ls);
       if (ls->t.token == ')')  /* arg list is empty? */
         args.k = VVOID;
       else {
         explist(ls, &args, argdescs);
         if (hasmultret(args.k))
-          maskK_setmultret(fs, &args);
+          helloK_setmultret(fs, &args);
       }
       check_match(ls, ')', '(', line);
       break;
@@ -1567,14 +1567,14 @@ static void funcargs (LexState *ls, expdesc *f, int line, TypeDesc *funcdesc = n
     case TK_STRING: {  /* funcargs -> STRING */
       argdescs = { TypeDesc{ VT_STR } };
       codestring(&args, ls->t.seminfo.ts);
-      maskX_next(ls);  /* must use 'seminfo' before 'next' */
+      helloX_next(ls);  /* must use 'seminfo' before 'next' */
       break;
     }
     default: {
-      maskX_syntaxerror(ls, "function arguments expected");
+      helloX_syntaxerror(ls, "function arguments expected");
     }
   }
-#ifndef MASK_NO_PARSER_WARNINGS
+#ifndef HELLO_NO_PARSER_WARNINGS
   if (funcdesc) {
     for (lu_byte i = 0; i != funcdesc->getNumTypedParams(); ++i) {
       const PrimitiveType& param_hint = funcdesc->params[i];
@@ -1602,22 +1602,22 @@ static void funcargs (LexState *ls, expdesc *f, int line, TypeDesc *funcdesc = n
       auto suffix = expected == 1 ? "" : "s"; // Omit plural suffixes when the noun is singular.
       throw_warn(ls,
         "too many arguments",
-          maskO_fmt(ls->L, "expected %d argument%s, got %d.", expected, suffix, received), EXCESSIVE_ARGUMENTS);
+          helloO_fmt(ls->L, "expected %d argument%s, got %d.", expected, suffix, received), EXCESSIVE_ARGUMENTS);
       --ls->L->top;
     }
   }
 #endif
-  mask_assert(f->k == VNONRELOC);
+  hello_assert(f->k == VNONRELOC);
   base = f->u.info;  /* base register for call */
   if (hasmultret(args.k))
-    nparams = MASK_MULTRET;  /* open call */
+    nparams = HELLO_MULTRET;  /* open call */
   else {
     if (args.k != VVOID)
-      maskK_exp2nextreg(fs, &args);  /* close last argument */
+      helloK_exp2nextreg(fs, &args);  /* close last argument */
     nparams = fs->freereg - (base+1);
   }
-  init_exp(f, VCALL, maskK_codeABC(fs, OP_CALL, base, nparams+1, 2));
-  maskK_fixline(fs, line);
+  init_exp(f, VCALL, helloK_codeABC(fs, OP_CALL, base, nparams+1, 2));
+  helloK_fixline(fs, line);
   fs->freereg = base+1;  /* call remove function and arguments and leaves
                             (unless changed) one result */
   ls->popContext(PARCTX_FUNCARGS);
@@ -1635,20 +1635,20 @@ static void funcargs (LexState *ls, expdesc *f, int line, TypeDesc *funcdesc = n
 
 /*
 ** Safe navigation is entirely accredited to SvenOlsen.
-** http://mask-users.org/wiki/SvenOlsen
+** http://hello-users.org/wiki/SvenOlsen
 */
 static void safe_navigation(LexState *ls, expdesc *v) {
   FuncState *fs = ls->fs;
-  maskK_exp2nextreg(fs, v);
-  maskK_codeABC(fs, OP_TEST, v->u.info, NO_REG, 0 );
+  helloK_exp2nextreg(fs, v);
+  helloK_codeABC(fs, OP_TEST, v->u.info, NO_REG, 0 );
   {
     int old_free = fs->freereg;             
     int vreg = v->u.info;
-    int j = maskK_jump(fs);
+    int j = helloK_jump(fs);
     expdesc key;
     switch(ls->t.token) {
       case '[': {
-        maskX_next(ls);  /* skip the '[' */
+        helloX_next(ls);  /* skip the '[' */
         if (ls->t.token == '-') {
           expr(ls, &key);
           switch (key.k) {
@@ -1667,26 +1667,26 @@ static void safe_navigation(LexState *ls, expdesc *v) {
         }
         else expr(ls, &key);
         checknext(ls, ']');
-        maskK_indexed(fs, v, &key);
+        helloK_indexed(fs, v, &key);
         break; 
       }       
       case '.': {
-        maskX_next(ls);
+        helloX_next(ls);
         codename(ls, &key);
-        maskK_indexed(fs, v, &key);
+        helloK_indexed(fs, v, &key);
         break;
       }
       default: {
-        maskX_syntaxerror(ls, "unexpected symbol");
+        helloX_syntaxerror(ls, "unexpected symbol");
       }
     }
-    maskK_exp2nextreg(fs, v);
+    helloK_exp2nextreg(fs, v);
     fs->freereg = old_free;
     if (v->u.info != vreg) {
-      maskK_codeABC(fs, OP_MOVE, vreg, v->u.info, 0);
+      helloK_codeABC(fs, OP_MOVE, vreg, v->u.info, 0);
       v->u.info = vreg;
     }
-    maskK_patchtohere(fs, j);
+    helloK_patchtohere(fs, j);
   }
 }
 
@@ -1704,37 +1704,37 @@ struct StringChain {
 
   ~StringChain() noexcept {
     if (v->k == VVOID) { /* ensure we produce at least an empty string */
-      codestring(v, maskS_new(ls->L, ""));
+      codestring(v, helloS_new(ls->L, ""));
     }
     leavelevel(ls);
   }
 
   void add(const char* str) noexcept {
     if (v->k == VVOID) { /* first chain entry? */
-      codestring(v, maskS_new(ls->L, str));
+      codestring(v, helloS_new(ls->L, str));
     } else {
-      maskK_infix(ls->fs, OPR_CONCAT, v);
+      helloK_infix(ls->fs, OPR_CONCAT, v);
       expdesc v2;
-      codestring(&v2, maskS_new(ls->L, str));
-      maskK_posfix(ls->fs, OPR_CONCAT, v, &v2, ls->getLineNumber());
+      codestring(&v2, helloS_new(ls->L, str));
+      helloK_posfix(ls->fs, OPR_CONCAT, v, &v2, ls->getLineNumber());
     }
   }
 
   void addVar(const char* varname) noexcept {
     if (v->k == VVOID) { /* first chain entry? */
-      singlevarinner(ls, maskS_new(ls->L, varname), v);
+      singlevarinner(ls, helloS_new(ls->L, varname), v);
     } else {
-      maskK_infix(ls->fs, OPR_CONCAT, v);
+      helloK_infix(ls->fs, OPR_CONCAT, v);
       expdesc v2;
-      singlevarinner(ls, maskS_new(ls->L, varname), &v2);
-      maskK_posfix(ls->fs, OPR_CONCAT, v, &v2, ls->getLineNumber());
+      singlevarinner(ls, helloS_new(ls->L, varname), &v2);
+      helloK_posfix(ls->fs, OPR_CONCAT, v, &v2, ls->getLineNumber());
     }
   }
 };
 
 
 static void fstring (LexState *ls, expdesc *v) {
-  maskX_next(ls); /* skip '$' */
+  helloX_next(ls); /* skip '$' */
 
   check(ls, TK_STRING);
   auto str = ls->t.seminfo.ts->toCpp();
@@ -1752,7 +1752,7 @@ static void fstring (LexState *ls, expdesc *v) {
     ++del;
     size_t del2 = str.find('}', del);
     if (del2 == std::string::npos) {
-      maskX_syntaxerror(ls, "Improper $-string with unterminated varname");
+      helloX_syntaxerror(ls, "Improper $-string with unterminated varname");
       break;
     }
     auto varname_len = (del2 - del);
@@ -1762,7 +1762,7 @@ static void fstring (LexState *ls, expdesc *v) {
     i = del;
   }
 
-  maskX_next(ls); /* skip string */
+  helloX_next(ls); /* skip string */
 }
 
 
@@ -1775,10 +1775,10 @@ static void primaryexp (LexState *ls, expdesc *v) {
   switch (ls->t.token) {
     case '(': {
       int line = ls->getLineNumber();
-      maskX_next(ls);
+      helloX_next(ls);
       expr(ls, v);
       check_match(ls, ')', '(', line);
-      maskK_dischargevars(ls->fs, v);
+      helloK_dischargevars(ls->fs, v);
       return;
     }
     case '}':
@@ -1801,8 +1801,8 @@ static void primaryexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
-      const char *token = maskX_token2str(ls, ls->t.token);
-      throwerr(ls, maskO_fmt(ls->L, "unexpected symbol near %s", token), "unexpected symbol.");
+      const char *token = helloX_token2str(ls, ls->t.token);
+      throwerr(ls, helloO_fmt(ls->L, "unexpected symbol near %s", token), "unexpected symbol.");
     }
   }
 }
@@ -1817,10 +1817,10 @@ static void suffixedexp (LexState *ls, expdesc *v, bool no_colon = false, TypeDe
   for (;;) {
     switch (ls->t.token) {
       case '?': {  /* safe navigation or ternary */
-        maskX_next(ls); /* skip '?' */
+        helloX_next(ls); /* skip '?' */
         if (gett(ls) != '[' && gett(ls) != '.') {
           /* it's a ternary but we have to deal with that later */
-          maskX_prev(ls); /* unskip '?' */
+          helloX_prev(ls); /* unskip '?' */
           return; /* back to primaryexp */
         }
         safe_navigation(ls, v);
@@ -1832,9 +1832,9 @@ static void suffixedexp (LexState *ls, expdesc *v, bool no_colon = false, TypeDe
       }
       case '[': {  /* '[' exp ']' */
         expdesc key;
-        maskK_exp2anyregup(fs, v);
+        helloK_exp2anyregup(fs, v);
         yindex(ls, &key);
-        maskK_indexed(fs, v, &key);
+        helloK_indexed(fs, v, &key);
         break;
       }
       case ':': {  /* ':' NAME funcargs */
@@ -1842,9 +1842,9 @@ static void suffixedexp (LexState *ls, expdesc *v, bool no_colon = false, TypeDe
           return;
         }
         expdesc key;
-        maskX_next(ls);
+        helloX_next(ls);
         codename(ls, &key);
-        maskK_self(fs, v, &key);
+        helloK_self(fs, v, &key);
         funcargs(ls, v, line);
         break;
       }
@@ -1859,7 +1859,7 @@ static void suffixedexp (LexState *ls, expdesc *v, bool no_colon = false, TypeDe
             }
           }
         }
-        maskK_exp2nextreg(fs, v);
+        helloK_exp2nextreg(fs, v);
         funcargs(ls, v, line, funcdesc);
         break;
       }
@@ -1878,17 +1878,17 @@ static void ifexpr (LexState *ls, expdesc *v) {
   int condition;
   int escape = NO_JUMP;
   int reg;
-  maskX_next(ls);			
+  helloX_next(ls);			
   condition = cond(ls);
   checknext(ls, TK_THEN);
   expr(ls, v);					
-  reg = maskK_exp2anyreg(fs, v);			
-  maskK_concat(fs, &escape, maskK_jump(fs));
-  maskK_patchtohere(fs, condition);
+  reg = helloK_exp2anyreg(fs, v);			
+  helloK_concat(fs, &escape, helloK_jump(fs));
+  helloK_patchtohere(fs, condition);
   checknext(ls, TK_ELSE);
   expr(ls, v);
-  maskK_exp2reg(fs, v, reg);
-  maskK_patchtohere(fs, escape);
+  helloK_exp2reg(fs, v, reg);
+  helloK_patchtohere(fs, escape);
 }
 
 
@@ -1932,7 +1932,7 @@ static void simpleexp (LexState *ls, expdesc *v, bool no_colon, TypeDesc *prop) 
       FuncState *fs = ls->fs;
       check_condition(ls, fs->f->is_vararg,
                       "cannot use '...' outside a vararg function");
-      init_exp(v, VVARARG, maskK_codeABC(fs, OP_VARARG, 0, 0, 1));
+      init_exp(v, VVARARG, helloK_codeABC(fs, OP_VARARG, 0, 0, 1));
       break;
     }
     case '{': {  /* constructor */
@@ -1941,7 +1941,7 @@ static void simpleexp (LexState *ls, expdesc *v, bool no_colon, TypeDesc *prop) 
       return;
     }
     case TK_FUNCTION: {
-      maskX_next(ls);
+      helloX_next(ls);
       body(ls, v, 0, ls->getLineNumber(), prop);
       return;
     }
@@ -1954,11 +1954,11 @@ static void simpleexp (LexState *ls, expdesc *v, bool no_colon, TypeDesc *prop) 
       return;
     }
   }
-  maskX_next(ls);
+  helloX_next(ls);
   if (!no_colon && testnext(ls, ':')) {
     expdesc key;
     codename(ls, &key);
-    maskK_self(ls->fs, v, &key);
+    helloK_self(ls->fs, v, &key);
     funcargs(ls, v, ls->getLineNumber());
   }
 }
@@ -1968,10 +1968,10 @@ static void inexpr (LexState *ls, expdesc *v) {
   expdesc v2;
   checknext(ls, TK_IN);
   expr(ls, &v2);
-  maskK_exp2nextreg(ls->fs, v);
-  maskK_exp2nextreg(ls->fs, &v2);
-  maskK_codeABC(ls->fs, OP_IN, v->u.info, v2.u.info, 0);
-  maskK_storevar(ls->fs, v, v);
+  helloK_exp2nextreg(ls->fs, v);
+  helloK_exp2nextreg(ls->fs, &v2);
+  helloK_codeABC(ls->fs, OP_IN, v->u.info, v2.u.info, 0);
+  helloK_storevar(ls->fs, v, v);
 }
 
 
@@ -2018,31 +2018,31 @@ static BinOpr getbinopr (int op) {
 
 static void prefixplusplus(LexState *ls, expdesc* v) {
   int line = ls->getLineNumber();
-  maskX_next(ls); /* skip second '+' */
+  helloX_next(ls); /* skip second '+' */
   singlevar(ls, v); /* variable name */
   FuncState *fs = ls->fs;
   expdesc e = *v, v2;
   if (v->k != VLOCAL) {  /* complex lvalue, use a temporary register. linear perf incr. with complexity of lvalue */
-    maskK_reserveregs(fs, fs->freereg-fs->nactvar);
+    helloK_reserveregs(fs, fs->freereg-fs->nactvar);
     enterlevel(ls);
-    maskK_infix(fs, OPR_ADD, &e);
+    helloK_infix(fs, OPR_ADD, &e);
     init_exp(&v2, VKINT, 0);
     v2.u.ival = 1;
-    maskK_posfix(fs, OPR_ADD, &e, &v2, line);
+    helloK_posfix(fs, OPR_ADD, &e, &v2, line);
     leavelevel(ls);
-    maskK_exp2nextreg(fs, &e);
-    maskK_setoneret(ls->fs, &e);
-    maskK_storevar(ls->fs, v, &e);
+    helloK_exp2nextreg(fs, &e);
+    helloK_setoneret(ls->fs, &e);
+    helloK_storevar(ls->fs, v, &e);
   }
   else {  /* simple lvalue; a local. directly change value (~20% speedup vs temporary register) */
     enterlevel(ls);
-    maskK_infix(fs, OPR_ADD, &e);
+    helloK_infix(fs, OPR_ADD, &e);
     init_exp(&v2, VKINT, 0);
     v2.u.ival = 1;
-    maskK_posfix(fs, OPR_ADD, &e, &v2, line);
+    helloK_posfix(fs, OPR_ADD, &e, &v2, line);
     leavelevel(ls);
-    maskK_setoneret(ls->fs, &e);
-    maskK_storevar(ls->fs, v, &e);
+    helloK_setoneret(ls->fs, &e);
+    helloK_storevar(ls->fs, v, &e);
   }
 }
 
@@ -2080,14 +2080,14 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit, TypeDesc *prop = nul
   uop = getunopr(ls->t.token);
   if (uop != OPR_NOUNOPR) {  /* prefix (unary) operator? */
     int line = ls->getLineNumber();
-    maskX_next(ls);  /* skip operator */
+    helloX_next(ls);  /* skip operator */
     subexpr(ls, v, UNARY_PRIORITY);
-    maskK_prefix(ls->fs, uop, v, line);
+    helloK_prefix(ls->fs, uop, v, line);
   }
   else if (ls->t.token == TK_IF) ifexpr(ls, v);
   else if (ls->t.token == '+') {
     int line = ls->getLineNumber();
-    maskX_next(ls); /* skip '+' */
+    helloX_next(ls); /* skip '+' */
     if (ls->t.token == '+') { /* '++' ? */
       prefixplusplus(ls, v);
     }
@@ -2095,11 +2095,11 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit, TypeDesc *prop = nul
       /* support pseudo-unary '+' by implying '0 + subexpr' */
       init_exp(v, VKINT, 0);
       v->u.ival = 0;
-      maskK_infix(ls->fs, OPR_ADD, v);
+      helloK_infix(ls->fs, OPR_ADD, v);
 
       expdesc v2;
       subexpr(ls, &v2, priority[OPR_ADD].right);
-      maskK_posfix(ls->fs, OPR_ADD, v, &v2, line);
+      helloK_posfix(ls->fs, OPR_ADD, v, &v2, line);
     }
   }
   else {
@@ -2115,11 +2115,11 @@ static BinOpr subexpr (LexState *ls, expdesc *v, int limit, TypeDesc *prop = nul
     expdesc v2;
     BinOpr nextop;
     int line = ls->getLineNumber();
-    maskX_next(ls);  /* skip operator */
-    maskK_infix(ls->fs, op, v);
+    helloX_next(ls);  /* skip operator */
+    helloK_infix(ls->fs, op, v);
     /* read sub-expression with higher priority */
     nextop = subexpr(ls, &v2, priority[op].right);
-    maskK_posfix(ls->fs, op, v, &v2, line);
+    helloK_posfix(ls->fs, op, v, &v2, line);
     op = nextop;
   }
   leavelevel(ls);
@@ -2132,17 +2132,17 @@ static void expr (LexState *ls, expdesc *v, TypeDesc *prop, bool no_colon) {
   if (testnext(ls, '?')) { /* ternary expression? */
     int escape = NO_JUMP;
     v->normaliseFalse();
-    maskK_goiftrue(ls->fs, v);
+    helloK_goiftrue(ls->fs, v);
     int condition = v->f;
     expr(ls, v, nullptr, true);
     auto fs = ls->fs;
-    auto reg = maskK_exp2anyreg(fs, v);
-    maskK_concat(fs, &escape, maskK_jump(fs));
-    maskK_patchtohere(fs, condition);
+    auto reg = helloK_exp2anyreg(fs, v);
+    helloK_concat(fs, &escape, helloK_jump(fs));
+    helloK_patchtohere(fs, condition);
     checknext(ls, ':');
     expr(ls, v);
-    maskK_exp2reg(fs, v, reg);
-    maskK_patchtohere(fs, escape);
+    helloK_exp2reg(fs, v, reg);
+    helloK_patchtohere(fs, escape);
     if (prop) *prop = VT_MIXED; /* reset propagated type */
   }
 }
@@ -2214,10 +2214,10 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   if (conflict) {
     /* copy upvalue/local value to a temporary (in position 'extra') */
     if (v->k == VLOCAL)
-      maskK_codeABC(fs, OP_MOVE, extra, v->u.var.ridx, 0);
+      helloK_codeABC(fs, OP_MOVE, extra, v->u.var.ridx, 0);
     else
-      maskK_codeABC(fs, OP_GETUPVAL, extra, v->u.info, 0);
-    maskK_reserveregs(fs, 1);
+      helloK_codeABC(fs, OP_GETUPVAL, extra, v->u.info, 0);
+    helloK_reserveregs(fs, 1);
   }
 }
 
@@ -2225,9 +2225,9 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   gets the supported binary compound operation (if any)
   gives OPR_NOBINOPR if the operation does not have compound support.
   returns a status (0 false, 1 true) and takes a pointer to set.
-  this allows for seamless conditional implementation, avoiding a getcompoundop call for every Mask assignment.
+  this allows for seamless conditional implementation, avoiding a getcompoundop call for every Hello assignment.
 */
-static int getcompoundop (mask_Integer i, BinOpr *op) {
+static int getcompoundop (hello_Integer i, BinOpr *op) {
   switch (i) {
     case TK_CCAT: {
       *op = OPR_CONCAT;
@@ -2300,35 +2300,35 @@ static int getcompoundop (mask_Integer i, BinOpr *op) {
   preforms binary operation and assignment
 */ 
 static void compoundassign(LexState *ls, expdesc* v, BinOpr op) {
-  maskX_next(ls);
+  helloX_next(ls);
   int line = ls->getLineNumber();
   FuncState *fs = ls->fs;
   expdesc e = *v, v2;
   if (v->k != VLOCAL) {  /* complex lvalue, use a temporary register. linear perf incr. with complexity of lvalue */
-    maskK_reserveregs(fs, fs->freereg-fs->nactvar);
+    helloK_reserveregs(fs, fs->freereg-fs->nactvar);
     enterlevel(ls);
-    maskK_infix(fs, op, &e);
+    helloK_infix(fs, op, &e);
     expr(ls, &v2);
-    maskK_posfix(fs, op, &e, &v2, line);
+    helloK_posfix(fs, op, &e, &v2, line);
     leavelevel(ls);
-    maskK_exp2nextreg(fs, &e);
-    maskK_setoneret(ls->fs, &e);
-    maskK_storevar(ls->fs, v, &e);
+    helloK_exp2nextreg(fs, &e);
+    helloK_setoneret(ls->fs, &e);
+    helloK_storevar(ls->fs, v, &e);
   }
   else {  /* simple lvalue; a local. directly change value (~20% speedup vs temporary register) */
     enterlevel(ls);
-    maskK_infix(fs, op, &e);
+    helloK_infix(fs, op, &e);
     expr(ls, &v2);
-    maskK_posfix(fs, op, &e, &v2, line);
+    helloK_posfix(fs, op, &e, &v2, line);
     leavelevel(ls);
-    maskK_setoneret(ls->fs, &e);
-    maskK_storevar(ls->fs, v, &e);
+    helloK_setoneret(ls->fs, &e);
+    helloK_storevar(ls->fs, v, &e);
   }
 }
 
 /*
   assignment function
-  handles every Mask assignment
+  handles every Hello assignment
   special cases for compound operators via lexer state tokens (ls->t.seminfo.i)
 */
 static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
@@ -2364,18 +2364,18 @@ static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
       if (nexps != nvars)
         adjust_assign(ls, nvars, nexps, &e);
       else {
-        maskK_setoneret(ls->fs, &e);  /* close last expression */
+        helloK_setoneret(ls->fs, &e);  /* close last expression */
         if (lh->v.k == VLOCAL) { /* assigning to a local variable? */
           exp_propagate(ls, e, prop);
           process_assign(ls, getlocalvardesc(ls->fs, lh->v.u.var.vidx), prop, line);
         }
-        maskK_storevar(ls->fs, &lh->v, &e);
+        helloK_storevar(ls->fs, &lh->v, &e);
         return;  /* avoid default */
       }
     }
   }
   init_exp(&e, VNONRELOC, ls->fs->freereg-1);  /* default assignment */
-  maskK_storevar(ls->fs, &lh->v, &e);
+  helloK_storevar(ls->fs, &lh->v, &e);
 }
 
 int cond (LexState *ls) {
@@ -2383,7 +2383,7 @@ int cond (LexState *ls) {
   expdesc v;
   expr(ls, &v);  /* read condition */
   v.normaliseFalse();
-  maskK_goiftrue(ls->fs, &v);
+  helloK_goiftrue(ls->fs, &v);
   return v.f;
 }
 
@@ -2394,14 +2394,14 @@ static void lgoto(LexState *ls, TString *name) {
   Labeldesc *lb = findlabel(ls, name);
   if (lb == NULL)  /* no label? */
     /* forward jump; will be resolved when the label is declared */
-    newgotoentry(ls, name, line, maskK_jump(fs));
+    newgotoentry(ls, name, line, helloK_jump(fs));
   else {  /* found a label */
     /* backward jump; will be resolved here */
     int lblevel = reglevel(fs, lb->nactvar);  /* label level */
-    if (maskY_nvarstack(fs) > lblevel)  /* leaving the scope of a variable? */
-      maskK_codeABC(fs, OP_CLOSE, lblevel, 0, 0);
+    if (helloY_nvarstack(fs) > lblevel)  /* leaving the scope of a variable? */
+      helloK_codeABC(fs, OP_CLOSE, lblevel, 0, 0);
     /* create jump and link it to the label */
-    maskK_patchlist(fs, maskK_jump(fs), lb->pc);
+    helloK_patchlist(fs, helloK_jump(fs), lb->pc);
   }
 }
 
@@ -2414,7 +2414,7 @@ static void gotostat (LexState *ls) {
 ** Break statement. Very similiar to `continue` usage, but it jumps slightly more forward.
 **
 ** Implementation Detail:
-**   Unlike normal Mask, it has been reverted from a label implementation back into a mix between a label & patchlist implementation.
+**   Unlike normal Hello, it has been reverted from a label implementation back into a mix between a label & patchlist implementation.
 **   This allows reusage of the existing "continue" implementation, which has been time-tested extensively by now.
 */
 static void breakstat (LexState *ls) {
@@ -2422,14 +2422,14 @@ static void breakstat (LexState *ls) {
   FuncState *fs = ls->fs;
   BlockCnt *bl = fs->bl;
   int upval = 0;
-  maskX_next(ls); /* skip TK_BREAK */
-  mask_Integer backwards = 1;
+  helloX_next(ls); /* skip TK_BREAK */
+  hello_Integer backwards = 1;
   if (ls->t.token == TK_INT) {
     backwards = ls->t.seminfo.i;
     if (backwards == 0) {
       throwerr(ls, "expected number of blocks to skip, found '0'", "unexpected '0'", line);
     }
-    maskX_next(ls);
+    helloX_next(ls);
   }
   while (bl) {
     if (!bl->isloop) { /* not a loop, continue search */
@@ -2447,8 +2447,8 @@ static void breakstat (LexState *ls) {
     };
   }
   if (bl) {
-    if (upval) maskK_codeABC(fs, OP_CLOSE, bl->nactvar, 0, 0); /* close upvalues */
-    maskK_concat(fs, &bl->breaklist, maskK_jump(fs));
+    if (upval) helloK_codeABC(fs, OP_CLOSE, bl->nactvar, 0, 0); /* close upvalues */
+    helloK_concat(fs, &bl->breaklist, helloK_jump(fs));
   }
   else {
     throwerr(ls, "break can't skip that many blocks", "try a smaller number", line);
@@ -2491,7 +2491,7 @@ static void casecond(LexState* ls, int case_line, expdesc& lcase) {
 
 static void switchstat (LexState *ls, int line) {
   int switchToken = gett(ls);
-  maskX_next(ls); // Skip switch statement.
+  helloX_next(ls); // Skip switch statement.
   testnext(ls, '(');
 
   FuncState* fs = ls->fs;
@@ -2500,38 +2500,38 @@ static void switchstat (LexState *ls, int line) {
 
   expdesc crtl, save, first;
   expr(ls, &crtl);
-  maskK_exp2nextreg(ls->fs, &crtl);
+  helloK_exp2nextreg(ls->fs, &crtl);
   init_exp(&save, VLOCAL, crtl.u.info);
   testnext(ls, ')');
   checknext(ls, TK_DO);
   new_localvarliteral(ls, "(switch control value)"); // Save control value into a local.
   adjustlocalvars(ls, 1);
 
-  TString* const begin_switch = maskS_newliteral(ls->L, "mask_begin_switch");
-  TString* const end_switch = maskS_newliteral(ls->L, "mask_end_switch");
+  TString* const begin_switch = helloS_newliteral(ls->L, "hello_begin_switch");
+  TString* const end_switch = helloS_newliteral(ls->L, "hello_end_switch");
   TString* default_case = nullptr;
 
   if (gett(ls) == TK_CASE || gett(ls) == TK_PCASE) {
     int case_line = ls->getLineNumber();
 
     if (gett(ls) == TK_PCASE) {
-      throw_warn(ls, "'mask_case' is deprecated", "use 'case' instead", WT_DEPRECATED);
+      throw_warn(ls, "'hello_case' is deprecated", "use 'case' instead", WT_DEPRECATED);
     }
-    maskX_next(ls); /* Skip 'case' */
+    helloX_next(ls); /* Skip 'case' */
 
     first = save;
 
     expdesc lcase;
     casecond(ls, case_line, lcase);
 
-    maskK_infix(fs, OPR_NE, &first);
-    maskK_posfix(fs, OPR_NE, &first, &lcase, ls->getLineNumber());
+    helloK_infix(fs, OPR_NE, &first);
+    helloK_posfix(fs, OPR_NE, &first, &lcase, ls->getLineNumber());
 
     caselist(ls);
   }
   else {
     first.k = VVOID;
-    newgotoentry(ls, begin_switch, ls->getLineNumber(), maskK_jump(fs)); // goto begin_switch
+    newgotoentry(ls, begin_switch, ls->getLineNumber(), helloK_jump(fs)); // goto begin_switch
   }
 
   std::vector<std::pair<expdesc, int>> cases{};
@@ -2540,14 +2540,14 @@ static void switchstat (LexState *ls, int line) {
     auto case_line = ls->getLineNumber();
     if (gett(ls) == TK_DEFAULT || gett(ls) == TK_PDEFAULT) {
       if (gett(ls) == TK_PDEFAULT) {
-        throw_warn(ls, "'mask_default' is deprecated", "use 'default' instead", WT_DEPRECATED);
+        throw_warn(ls, "'hello_default' is deprecated", "use 'default' instead", WT_DEPRECATED);
       }
-      maskX_next(ls); /* Skip 'default' */
+      helloX_next(ls); /* Skip 'default' */
 
       checknext(ls, ':');
       if (default_case != nullptr)
         throwerr(ls, "switch statement already has a default case", "second default case", case_line);
-      default_case = maskS_newliteral(ls->L, "mask_default_case");
+      default_case = helloS_newliteral(ls->L, "hello_default_case");
       createlabel(ls, default_case, ls->getLineNumber(), block_follow(ls, 0));
       caselist(ls);
     }
@@ -2555,16 +2555,16 @@ static void switchstat (LexState *ls, int line) {
       if (!testnext2(ls, TK_CASE, TK_PCASE)) {
         error_expected(ls, TK_CASE);
       }
-      casecond(ls, case_line, cases.emplace_back(std::pair<expdesc, int>{ expdesc{}, maskK_getlabel(fs) }).first);
+      casecond(ls, case_line, cases.emplace_back(std::pair<expdesc, int>{ expdesc{}, helloK_getlabel(fs) }).first);
       caselist(ls);
     }
   }
 
   /* handle possible fallthrough, don't loop infinitely */
-  newgotoentry(ls, end_switch, ls->getLineNumber(), maskK_jump(fs)); // goto end_switch
+  newgotoentry(ls, end_switch, ls->getLineNumber(), helloK_jump(fs)); // goto end_switch
 
   if (first.k != VVOID) {
-    maskK_patchtohere(fs, first.u.info);
+    helloK_patchtohere(fs, first.u.info);
   }
   else {
     createlabel(ls, begin_switch, ls->getLineNumber(), block_follow(ls, 0)); // ::begin_switch::
@@ -2573,9 +2573,9 @@ static void switchstat (LexState *ls, int line) {
   expdesc test;
   for (auto& c : cases) {
     test = save;
-    maskK_infix(fs, OPR_EQ, &test);
-    maskK_posfix(fs, OPR_EQ, &test, &c.first, ls->getLineNumber());
-    maskK_patchlist(fs, test.u.info, c.second);
+    helloK_infix(fs, OPR_EQ, &test);
+    helloK_posfix(fs, OPR_EQ, &test, &c.first, ls->getLineNumber());
+    helloK_patchlist(fs, test.u.info, c.second);
   }
 
   if (default_case != nullptr)
@@ -2591,16 +2591,16 @@ static void switchstat (LexState *ls, int line) {
 static void enumstat (LexState *ls) {
   /* enumstat -> ENUM [NAME] BEGIN NAME ['=' INT] { ',' NAME ['=' INT] } END */
 
-  maskX_next(ls); /* skip 'enum' */
+  helloX_next(ls); /* skip 'enum' */
 
   if (gett(ls) != TK_BEGIN) { /* enum has name? */
-    maskX_next(ls); /* skip name */
+    helloX_next(ls); /* skip name */
   }
 
   const auto line_begin = ls->getLineNumber();
   checknext(ls, TK_BEGIN); /* ensure we have 'begin' */
 
-  mask_Integer i = 1;
+  hello_Integer i = 1;
   while (gett(ls) == TK_NAME) {
     auto vidx = new_localvar(ls, str_checkname(ls, true), ls->getLineNumber());
     auto var = getlocalvardesc(ls->fs, vidx);
@@ -2609,7 +2609,7 @@ static void enumstat (LexState *ls) {
       simpleexp_with_unary_support(ls, &v);
       if (v.k == VCONST) { /* compile-time constant? */
         TValue* k = &ls->dyd->actvar.arr[v.u.info].k;
-        if (ttype(k) == MASK_TNUMBER && ttisinteger(k)) { /* integer value? */
+        if (ttype(k) == HELLO_TNUMBER && ttisinteger(k)) { /* integer value? */
           init_exp(&v, VKINT, 0);
           v.u.ival = ivalue(k);
         }
@@ -2623,7 +2623,7 @@ static void enumstat (LexState *ls) {
     setivalue(&var->k, i++);
     ls->fs->nactvar++;
     if (gett(ls) != ',') break;
-    maskX_next(ls);
+    helloX_next(ls);
   }
 
   check_match(ls, TK_END, TK_BEGIN, line_begin);
@@ -2637,8 +2637,8 @@ static void checkrepeated (LexState *ls, TString *name) {
   Labeldesc *lb = findlabel(ls, name);
   if (l_unlikely(lb != NULL)) {  /* already defined? */
     const char *msg = "label '%s' already defined on line %d";
-    msg = maskO_pushfstring(ls->L, msg, getstr(name), lb->line);
-    maskK_semerror(ls, msg);  /* error */
+    msg = helloO_pushfstring(ls->L, msg, getstr(name), lb->line);
+    helloK_semerror(ls, msg);  /* error */
   }
 }
 
@@ -2659,17 +2659,17 @@ static void whilestat (LexState *ls, int line) {
   int whileinit;
   int condexit;
   BlockCnt bl;
-  maskX_next(ls);  /* skip WHILE */
-  whileinit = maskK_getlabel(fs);
+  helloX_next(ls);  /* skip WHILE */
+  whileinit = helloK_getlabel(fs);
   condexit = cond(ls);
   enterblock(fs, &bl, 1);
   checknext(ls, TK_DO);
   block(ls);
-  maskK_jumpto(fs, whileinit);
-  maskK_patchlist(fs, bl.scopeend, whileinit);
+  helloK_jumpto(fs, whileinit);
+  helloK_patchlist(fs, bl.scopeend, whileinit);
   check_match(ls, TK_END, TK_WHILE, line);
   leaveblock(fs);
-  maskK_patchtohere(fs, condexit);  /* false conditions finish the loop */
+  helloK_patchtohere(fs, condexit);  /* false conditions finish the loop */
 }
 
 
@@ -2677,16 +2677,16 @@ static void repeatstat (LexState *ls) {
   /* repeatstat -> REPEAT block ( UNTIL | WHEN ) cond */
   int condexit;
   FuncState *fs = ls->fs;
-  int repeat_init = maskK_getlabel(fs);
+  int repeat_init = helloK_getlabel(fs);
   BlockCnt bl1, bl2;
   enterblock(fs, &bl1, 1);  /* loop block */
   enterblock(fs, &bl2, 0);  /* scope block */
-  maskX_next(ls);  /* skip REPEAT */
+  helloX_next(ls);  /* skip REPEAT */
   statlist(ls);
-  maskK_patchtohere(fs, bl1.scopeend);
+  helloK_patchtohere(fs, bl1.scopeend);
   if (testnext(ls, TK_UNTIL)) {
     condexit = cond(ls);  /* read condition (inside scope block) */
-#ifdef MASK_COMPATIBLE_WHEN
+#ifdef HELLO_COMPATIBLE_WHEN
   } else if (testnext(ls, TK_PWHEN)) {
 #else
   } else if (testnext2(ls, TK_PWHEN, TK_WHEN)) {
@@ -2694,7 +2694,7 @@ static void repeatstat (LexState *ls) {
     expdesc v;
     expr(ls, &v);  /* read condition */
     v.normaliseFalse();
-    maskK_goiffalse(ls->fs, &v);
+    helloK_goiffalse(ls->fs, &v);
     condexit = v.t;
   }
   else {
@@ -2702,13 +2702,13 @@ static void repeatstat (LexState *ls) {
   }
   leaveblock(fs);  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
-    int exit = maskK_jump(fs);  /* normal exit must jump over fix */
-    maskK_patchtohere(fs, condexit);  /* repetition must close upvalues */
-    maskK_codeABC(fs, OP_CLOSE, reglevel(fs, bl2.nactvar), 0, 0);
-    condexit = maskK_jump(fs);  /* repeat after closing upvalues */
-    maskK_patchtohere(fs, exit);  /* normal exit comes to here */
+    int exit = helloK_jump(fs);  /* normal exit must jump over fix */
+    helloK_patchtohere(fs, condexit);  /* repetition must close upvalues */
+    helloK_codeABC(fs, OP_CLOSE, reglevel(fs, bl2.nactvar), 0, 0);
+    condexit = helloK_jump(fs);  /* repeat after closing upvalues */
+    helloK_patchtohere(fs, exit);  /* normal exit comes to here */
   }
-  maskK_patchlist(fs, condexit, repeat_init);  /* close the loop */
+  helloK_patchlist(fs, condexit, repeat_init);  /* close the loop */
   leaveblock(fs);  /* finish loop */
 }
 
@@ -2721,14 +2721,14 @@ static void repeatstat (LexState *ls) {
 static void exp1 (LexState *ls) {
   expdesc e;
   expr(ls, &e);
-  maskK_exp2nextreg(ls->fs, &e);
-  mask_assert(e.k == VNONRELOC);
+  helloK_exp2nextreg(ls->fs, &e);
+  hello_assert(e.k == VNONRELOC);
 }
 
 
 /*
 ** Fix for instruction at position 'pc' to jump to 'dest'.
-** (Jump addresses are relative in Mask). 'back' true means
+** (Jump addresses are relative in Hello). 'back' true means
 ** a back jump.
 */
 static void fixforjump (FuncState *fs, int pc, int dest, int back) {
@@ -2737,7 +2737,7 @@ static void fixforjump (FuncState *fs, int pc, int dest, int back) {
   if (back)
     offset = -offset;
   if (l_unlikely(offset > MAXARG_Bx))
-    maskX_syntaxerror(fs->ls, "control structure too long");
+    helloX_syntaxerror(fs->ls, "control structure too long");
   SETARG_Bx(*jmp, offset);
 }
 
@@ -2753,21 +2753,21 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isgen) {
   FuncState *fs = ls->fs;
   int prep, endfor;
   checknext(ls, TK_DO);
-  prep = maskK_codeABx(fs, forprep[isgen], base, 0);
+  prep = helloK_codeABx(fs, forprep[isgen], base, 0);
   enterblock(fs, &bl, 0);  /* scope for declared variables */
   adjustlocalvars(ls, nvars);
-  maskK_reserveregs(fs, nvars);
+  helloK_reserveregs(fs, nvars);
   block(ls);
   leaveblock(fs);  /* end of scope for declared variables */
-  fixforjump(fs, prep, maskK_getlabel(fs), 0);
-  maskK_patchtohere(fs, bl.previous->scopeend);
+  fixforjump(fs, prep, helloK_getlabel(fs), 0);
+  helloK_patchtohere(fs, bl.previous->scopeend);
   if (isgen) {  /* generic for? */
-    maskK_codeABC(fs, OP_TFORCALL, base, 0, nvars);
-    maskK_fixline(fs, line);
+    helloK_codeABC(fs, OP_TFORCALL, base, 0, nvars);
+    helloK_fixline(fs, line);
   }
-  endfor = maskK_codeABx(fs, forloop[isgen], base, 0);
+  endfor = helloK_codeABx(fs, forloop[isgen], base, 0);
   fixforjump(fs, endfor, prep + 1, 1);
-  maskK_fixline(fs, line);
+  helloK_fixline(fs, line);
 }
 
 
@@ -2786,8 +2786,8 @@ static void fornum (LexState *ls, TString *varname, int line) {
   if (testnext(ls, ','))
     exp1(ls);  /* optional step */
   else {  /* default step = 1 */
-    maskK_int(fs, fs->freereg, 1);
-    maskK_reserveregs(fs, 1);
+    helloK_int(fs, fs->freereg, 1);
+    helloK_reserveregs(fs, 1);
   }
   adjustlocalvars(ls, 3);  /* control variables */
   forbody(ls, base, line, 1, 0);
@@ -2817,7 +2817,7 @@ static void forlist (LexState *ls, TString *indexname) {
   adjust_assign(ls, 4, explist(ls, &e), &e);
   adjustlocalvars(ls, 4);  /* control variables */
   marktobeclosed(fs);  /* last control var. must be closed */
-  maskK_checkstack(fs, 3);  /* extra space to call generator */
+  helloK_checkstack(fs, 3);  /* extra space to call generator */
   forbody(ls, base, line, nvars - 4, 1);
 }
 
@@ -2835,7 +2835,7 @@ static void forvlist (LexState *ls, TString *valname) {
   new_localvarliteral(ls, "(for state)");
   new_localvarliteral(ls, "(for state)");
   /* create variable for key */
-  new_localvar(ls, maskS_newliteral(ls->L, "(for state)"));
+  new_localvar(ls, helloS_newliteral(ls->L, "(for state)"));
   /* create variable for value */
   new_localvar(ls, valname);
   nvars++;
@@ -2844,10 +2844,10 @@ static void forvlist (LexState *ls, TString *valname) {
   adjust_assign(ls, 4, explist(ls, &e), &e);
   adjustlocalvars(ls, 4);  /* control variables */
   marktobeclosed(fs);  /* last control var. must be closed */
-  maskK_checkstack(fs, 3);  /* extra space to call generator */
+  helloK_checkstack(fs, 3);  /* extra space to call generator */
 
   checknext(ls, TK_AS);
-  maskX_next(ls); /* skip valname */
+  helloX_next(ls); /* skip valname */
 
   forbody(ls, base, line, nvars - 4, 1);
 }
@@ -2859,18 +2859,18 @@ static void forstat (LexState *ls, int line) {
   TString *varname = nullptr;
   BlockCnt bl;
   enterblock(fs, &bl, 1);  /* scope for loop and control variables */
-  maskX_next(ls);  /* skip 'for' */
+  helloX_next(ls);  /* skip 'for' */
 
   /* determine if this is a for-as loop */
-  auto sp = maskX_getpos(ls);
-  for (; ls->t.token != TK_IN && ls->t.token != TK_DO && ls->t.token != TK_EOS; maskX_next(ls)) {
+  auto sp = helloX_getpos(ls);
+  for (; ls->t.token != TK_IN && ls->t.token != TK_DO && ls->t.token != TK_EOS; helloX_next(ls)) {
     if (ls->t.token == TK_AS) {
-      maskX_next(ls);
+      helloX_next(ls);
       varname = str_checkname(ls);
       break;
     }
   }
-  maskX_setpos(ls, sp);
+  helloX_setpos(ls, sp);
 
   if (varname == nullptr) {
     varname = str_checkname(ls);  /* first variable name */
@@ -2884,7 +2884,7 @@ static void forstat (LexState *ls, int line) {
         break;
       }
       default: {
-        maskX_syntaxerror(ls, "'=' or 'in' expected");
+        helloX_syntaxerror(ls, "'=' or 'in' expected");
       }
     }
   }
@@ -2902,28 +2902,28 @@ static void test_then_block (LexState *ls, int *escapelist, TypeDesc *prop) {
   FuncState *fs = ls->fs;
   expdesc v;
   int jf;  /* instruction to skip 'then' code (if condition is false) */
-  maskX_next(ls);  /* skip IF or ELSEIF */
+  helloX_next(ls);  /* skip IF or ELSEIF */
   expr(ls, &v);  /* read condition */
   if (v.k == VNIL || v.k == VFALSE)
     throw_warn(ls, "unreachable code", "this condition will never be truthy.", ls->getLineNumber(), UNREACHABLE_CODE);
   checknext(ls, TK_THEN);
-  if (ls->t.token == TK_BREAK && maskX_lookahead(ls) != TK_INT) {  /* 'if x then break' and not 'if x then break int' ? */
+  if (ls->t.token == TK_BREAK && helloX_lookahead(ls) != TK_INT) {  /* 'if x then break' and not 'if x then break int' ? */
     ls->laststat.token = TK_BREAK;
     int line = ls->getLineNumber();
-    maskK_goiffalse(ls->fs, &v);  /* will jump if condition is true */
-    maskX_next(ls);  /* skip 'break' */
+    helloK_goiffalse(ls->fs, &v);  /* will jump if condition is true */
+    helloX_next(ls);  /* skip 'break' */
     enterblock(fs, &bl, 0);  /* must enter block before 'goto' */
-    newgotoentry(ls, maskS_newliteral(ls->L, "break"), line, v.t);
+    newgotoentry(ls, helloS_newliteral(ls->L, "break"), line, v.t);
     while (testnext(ls, ';')) {}  /* skip semicolons */
     if (block_follow(ls, 0)) {  /* jump is the entire block? */
       leaveblock(fs);
       return;  /* and that is it */
     }
     else  /* must skip over 'then' part if condition is false */
-      jf = maskK_jump(fs);
+      jf = helloK_jump(fs);
   }
   else {  /* regular case (not a break) */
-    maskK_goiftrue(ls->fs, &v);  /* skip over block if condition is false */
+    helloK_goiftrue(ls->fs, &v);  /* skip over block if condition is false */
     enterblock(fs, &bl, 0);
     jf = v.f;
   }
@@ -2931,8 +2931,8 @@ static void test_then_block (LexState *ls, int *escapelist, TypeDesc *prop) {
   leaveblock(fs);
   if (ls->t.token == TK_ELSE ||
       ls->t.token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
-    maskK_concat(fs, escapelist, maskK_jump(fs));  /* must jump over it */
-  maskK_patchtohere(fs, jf);
+    helloK_concat(fs, escapelist, helloK_jump(fs));  /* must jump over it */
+  helloK_patchtohere(fs, jf);
 }
 
 
@@ -2946,7 +2946,7 @@ static void ifstat (LexState *ls, int line, TypeDesc *prop = nullptr) {
   if (testnext(ls, TK_ELSE))
     block(ls);  /* 'else' part */
   check_match(ls, TK_END, TK_IF, line);
-  maskK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
+  helloK_patchtohere(fs, escapelist);  /* patch escape list to 'if' end */
 }
 
 
@@ -2974,10 +2974,10 @@ static int getlocalattribute (LexState *ls) {
     else if (strcmp(attr, "close") == 0)
       return RDKTOCLOSE;  /* to-be-closed variable */
     else {
-      maskX_prev(ls); // back to '>'
-      maskX_prev(ls); // back to attribute
-      maskK_semerror(ls,
-        maskO_pushfstring(ls->L, "unknown attribute '%s'", attr));
+      helloX_prev(ls); // back to '>'
+      helloX_prev(ls); // back to attribute
+      helloK_semerror(ls,
+        helloO_pushfstring(ls->L, "unknown attribute '%s'", attr));
     }
   }
   return VDKREG;  /* regular variable */
@@ -2987,7 +2987,7 @@ static int getlocalattribute (LexState *ls) {
 static void checktoclose (FuncState *fs, int level) {
   if (level != -1) {  /* is there a to-be-closed variable? */
     marktobeclosed(fs);
-    maskK_codeABC(fs, OP_TBC, reglevel(fs, level), 0, 0);
+    helloK_codeABC(fs, OP_TBC, reglevel(fs, level), 0, 0);
   }
 }
 
@@ -3013,8 +3013,8 @@ static void localstat (LexState *ls) {
     var->vd.hint = hint;
     if (kind == RDKTOCLOSE) {  /* to-be-closed? */
       if (toclose != -1) { /* one already present? */
-        maskX_setpos(ls, starting_tidx);
-        maskK_semerror(ls, "multiple to-be-closed variables in local list");
+        helloX_setpos(ls, starting_tidx);
+        helloK_semerror(ls, "multiple to-be-closed variables in local list");
       }
       toclose = fs->nactvar + nvars;
     }
@@ -3034,7 +3034,7 @@ static void localstat (LexState *ls) {
   }
   if (nvars == nexps) { /* no adjustments? */
     if (var->vd.kind == RDKCONST &&  /* last variable is const? */
-        maskK_exp2const(fs, &e, &var->k)) {  /* compile-time constant? */
+        helloK_exp2const(fs, &e, &var->k)) {  /* compile-time constant? */
       var->vd.kind = RDKCTC;  /* variable is a compile-time constant */
       adjustlocalvars(ls, nvars - 1);  /* exclude last variable */
       fs->nactvar++;  /* but count it */
@@ -3076,12 +3076,12 @@ static void funcstat (LexState *ls, int line) {
   /* funcstat -> FUNCTION funcname body */
   int ismethod;
   expdesc v, b;
-  maskX_next(ls);  /* skip FUNCTION */
+  helloX_next(ls);  /* skip FUNCTION */
   ismethod = funcname(ls, &v);
   body(ls, &b, ismethod, line);
   check_readonly(ls, &v);
-  maskK_storevar(ls->fs, &v, &b);
-  maskK_fixline(ls->fs, line);  /* definition "happens" in the first line */
+  helloK_storevar(ls->fs, &v, &b);
+  helloK_fixline(ls->fs, line);  /* definition "happens" in the first line */
 }
 
 
@@ -3108,7 +3108,7 @@ static void retstat (LexState *ls, TypeDesc *prop) {
   FuncState *fs = ls->fs;
   expdesc e;
   int nret;  /* number of values being returned */
-  int first = maskY_nvarstack(fs);  /* first slot to be returned */
+  int first = helloY_nvarstack(fs);  /* first slot to be returned */
   if (block_follow(ls, 1) || ls->t.token == ';'
     || ls->t.token == TK_CASE || ls->t.token == TK_DEFAULT
     || ls->t.token == TK_PCASE || ls->t.token == TK_PDEFAULT
@@ -3119,23 +3119,23 @@ static void retstat (LexState *ls, TypeDesc *prop) {
   else {
     nret = explist(ls, &e, prop);  /* optional return values */
     if (hasmultret(e.k)) {
-      maskK_setmultret(fs, &e);
+      helloK_setmultret(fs, &e);
       if (e.k == VCALL && nret == 1 && !fs->bl->insidetbc) {  /* tail call? */
         SET_OPCODE(getinstruction(fs,&e), OP_TAILCALL);
-        mask_assert(GETARG_A(getinstruction(fs,&e)) == maskY_nvarstack(fs));
+        hello_assert(GETARG_A(getinstruction(fs,&e)) == helloY_nvarstack(fs));
       }
-      nret = MASK_MULTRET;  /* return all values */
+      nret = HELLO_MULTRET;  /* return all values */
     }
     else {
       if (nret == 1)  /* only one single value? */
-        first = maskK_exp2anyreg(fs, &e);  /* can use original slot */
+        first = helloK_exp2anyreg(fs, &e);  /* can use original slot */
       else {  /* values must go to the top of the stack */
-        maskK_exp2nextreg(fs, &e);
-        mask_assert(nret == fs->freereg - first);
+        helloK_exp2nextreg(fs, &e);
+        hello_assert(nret == fs->freereg - first);
       }
     }
   }
-  maskK_ret(fs, first, nret);
+  helloK_ret(fs, first, nret);
   testnext(ls, ';');  /* skip optional semicolon */
 }
 
@@ -3143,18 +3143,18 @@ static void retstat (LexState *ls, TypeDesc *prop) {
 static void statement (LexState *ls, TypeDesc *prop) {
   int line = ls->getLineNumber();
   if (ls->laststat.IsEscapingToken() ||
-     (ls->laststat.Is(TK_GOTO) && !ls->findWithinLine(line, maskX_lookbehind(ls).seminfo.ts->toCpp()))) /* Don't warn if this statement is the goto's label. */
+     (ls->laststat.Is(TK_GOTO) && !ls->findWithinLine(line, helloX_lookbehind(ls).seminfo.ts->toCpp()))) /* Don't warn if this statement is the goto's label. */
   {
     throw_warn(ls,
       "unreachable code",
-        maskO_fmt(ls->L, "this code comes after an escaping %s statement.", maskX_token2str(ls, ls->laststat.token)), UNREACHABLE_CODE);
+        helloO_fmt(ls->L, "this code comes after an escaping %s statement.", helloX_token2str(ls, ls->laststat.token)), UNREACHABLE_CODE);
     ls->L->top -= 2;
   }
   ls->laststat.token = ls->t.token;
   enterlevel(ls);
   switch (ls->t.token) {
     case ';': {  /* stat -> ';' (empty statement) */
-      maskX_next(ls);  /* skip ';' */
+      helloX_next(ls);  /* skip ';' */
       break;
     }
     case TK_IF: {  /* stat -> ifstat */
@@ -3166,7 +3166,7 @@ static void statement (LexState *ls, TypeDesc *prop) {
       break;
     }
     case TK_DO: {  /* stat -> DO block END */
-      maskX_next(ls);  /* skip DO */
+      helloX_next(ls);  /* skip DO */
       block(ls);
       check_match(ls, TK_END, TK_DO, line);
       break;
@@ -3184,7 +3184,7 @@ static void statement (LexState *ls, TypeDesc *prop) {
       break;
     }
     case TK_LOCAL: {  /* stat -> localstat */
-      maskX_next(ls);  /* skip LOCAL */
+      helloX_next(ls);  /* skip LOCAL */
       if (testnext(ls, TK_FUNCTION))  /* local function? */
         localfunc(ls);
       else
@@ -3192,12 +3192,12 @@ static void statement (LexState *ls, TypeDesc *prop) {
       break;
     }
     case TK_DBCOLON: {  /* stat -> label */
-      maskX_next(ls);  /* skip double colon */
+      helloX_next(ls);  /* skip double colon */
       labelstat(ls, str_checkname(ls), line);
       break;
     }
     case TK_RETURN: {  /* stat -> retstat */
-      maskX_next(ls);  /* skip RETURN */
+      helloX_next(ls);  /* skip RETURN */
       retstat(ls, prop);
       break;
     }
@@ -3205,7 +3205,7 @@ static void statement (LexState *ls, TypeDesc *prop) {
       breakstat(ls);
       break;
     }
-#ifndef MASK_COMPATIBLE_CONTINUE
+#ifndef HELLO_COMPATIBLE_CONTINUE
     case TK_CONTINUE:
 #endif
     case TK_PCONTINUE: {
@@ -3213,7 +3213,7 @@ static void statement (LexState *ls, TypeDesc *prop) {
       break;
     }
     case TK_GOTO: {  /* stat -> 'goto' NAME */
-      maskX_next(ls);  /* skip 'goto' */
+      helloX_next(ls);  /* skip 'goto' */
       gotostat(ls);
       break;
     }
@@ -3225,14 +3225,14 @@ static void statement (LexState *ls, TypeDesc *prop) {
     case TK_PDEFAULT: {
       throwerr(ls, "inappropriate 'default' statement.", "outside of 'switch' block.");
     }
-#ifndef MASK_COMPATIBLE_SWITCH
+#ifndef HELLO_COMPATIBLE_SWITCH
     case TK_SWITCH:
 #endif
     case TK_PSWITCH: {
       switchstat(ls, line);
       break;
     }
-#ifndef MASK_COMPATIBLE_ENUM
+#ifndef HELLO_COMPATIBLE_ENUM
     case TK_ENUM:
 #endif
     case TK_PENUM: {
@@ -3244,9 +3244,9 @@ static void statement (LexState *ls, TypeDesc *prop) {
       break;
     }
   }
-  mask_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
-             ls->fs->freereg >= maskY_nvarstack(ls->fs));
-  ls->fs->freereg = maskY_nvarstack(ls->fs);  /* free registers */
+  hello_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
+             ls->fs->freereg >= helloY_nvarstack(ls->fs));
+  ls->fs->freereg = helloY_nvarstack(ls->fs);  /* free registers */
   leavelevel(ls);
 }
 
@@ -3255,7 +3255,7 @@ static void statement (LexState *ls, TypeDesc *prop) {
 
 /*
 ** compiles the main function, which is a regular vararg function with an
-** upvalue named MASK_ENV
+** upvalue named HELLO_ENV
 */
 static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
@@ -3267,36 +3267,36 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   env->idx = 0;
   env->kind = VDKREG;
   env->name = ls->envn;
-  maskC_objbarrier(ls->L, fs->f, env->name);
-  maskX_next(ls);  /* read first token */
+  helloC_objbarrier(ls->L, fs->f, env->name);
+  helloX_next(ls);  /* read first token */
   statlist(ls);  /* parse main body */
   check(ls, TK_EOS);
   close_func(ls);
 }
 
 
-LClosure *maskY_parser (mask_State *L, ZIO *z, Mbuffer *buff,
+LClosure *helloY_parser (hello_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
   FuncState funcstate;
-  LClosure *cl = maskF_newLclosure(L, 1);  /* create main closure */
+  LClosure *cl = helloF_newLclosure(L, 1);  /* create main closure */
   setclLvalue2s(L, L->top, cl);  /* anchor it (to avoid being collected) */
-  maskD_inctop(L);
-  lexstate.h = maskH_new(L);  /* create table for scanner */
+  helloD_inctop(L);
+  lexstate.h = helloH_new(L);  /* create table for scanner */
   sethvalue2s(L, L->top, lexstate.h);  /* anchor it */
-  maskD_inctop(L);
-  funcstate.f = cl->p = maskF_newproto(L);
-  maskC_objbarrier(L, cl, cl->p);
-  funcstate.f->source = maskS_new(L, name);  /* create and anchor TString */
-  maskC_objbarrier(L, funcstate.f, funcstate.f->source);
+  helloD_inctop(L);
+  funcstate.f = cl->p = helloF_newproto(L);
+  helloC_objbarrier(L, cl, cl->p);
+  funcstate.f->source = helloS_new(L, name);  /* create and anchor TString */
+  helloC_objbarrier(L, funcstate.f, funcstate.f->source);
   lexstate.buff = buff;
   lexstate.dyd = dyd;
   dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;
-  maskX_setinput(L, &lexstate, z, funcstate.f->source, firstchar);
+  helloX_setinput(L, &lexstate, z, funcstate.f->source, firstchar);
   mainfunc(&lexstate, &funcstate);
-  mask_assert(!funcstate.prev && funcstate.nups == 1 && !lexstate.fs);
+  hello_assert(!funcstate.prev && funcstate.nups == 1 && !lexstate.fs);
   /* all scopes should be correctly finished */
-  mask_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
+  hello_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
   L->top--;  /* remove scanner's table */
   return cl;  /* closure is on the stack, too */
 }

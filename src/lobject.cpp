@@ -1,11 +1,11 @@
 /*
 ** $Id: lobject.c $
-** Some generic functions over Mask objects
-** See Copyright Notice in mask.h
+** Some generic functions over Hello objects
+** See Copyright Notice in hello.h
 */
 
 #define lobject_c
-#define MASK_CORE
+#define HELLO_CORE
 
 #include "lprefix.h"
 
@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mask.h"
+#include "hello.h"
 
 #include "lctype.h"
 #include "ldebug.h"
@@ -32,7 +32,7 @@
 /*
 ** Computes ceil(log2(x))
 */
-int maskO_ceillog2 (unsigned int x) {
+int helloO_ceillog2 (unsigned int x) {
   static const lu_byte log_2[256] = {  /* log_2[i] = ceil(log2(i - 1)) */
     0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
     6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
@@ -50,57 +50,57 @@ int maskO_ceillog2 (unsigned int x) {
 }
 
 
-static mask_Integer intarith (mask_State *L, int op, mask_Integer v1,
-                                                   mask_Integer v2) {
+static hello_Integer intarith (hello_State *L, int op, hello_Integer v1,
+                                                   hello_Integer v2) {
   switch (op) {
-    case MASK_OPADD: return intop(+, v1, v2);
-    case MASK_OPSUB:return intop(-, v1, v2);
-    case MASK_OPMUL:return intop(*, v1, v2);
-    case MASK_OPMOD: return maskV_mod(L, v1, v2);
-    case MASK_OPIDIV: return maskV_idiv(L, v1, v2);
-    case MASK_OPBAND: return intop(&, v1, v2);
-    case MASK_OPBOR: return intop(|, v1, v2);
-    case MASK_OPBXOR: return intop(^, v1, v2);
-    case MASK_OPSHL: return maskV_shiftl(v1, v2);
-    case MASK_OPSHR: return maskV_shiftr(v1, v2);
-    case MASK_OPUNM: return intop(-, 0, v1);
-    case MASK_OPBNOT: return intop(^, ~l_castS2U(0), v1);
-    default: mask_assert(0); return 0;
+    case HELLO_OPADD: return intop(+, v1, v2);
+    case HELLO_OPSUB:return intop(-, v1, v2);
+    case HELLO_OPMUL:return intop(*, v1, v2);
+    case HELLO_OPMOD: return helloV_mod(L, v1, v2);
+    case HELLO_OPIDIV: return helloV_idiv(L, v1, v2);
+    case HELLO_OPBAND: return intop(&, v1, v2);
+    case HELLO_OPBOR: return intop(|, v1, v2);
+    case HELLO_OPBXOR: return intop(^, v1, v2);
+    case HELLO_OPSHL: return helloV_shiftl(v1, v2);
+    case HELLO_OPSHR: return helloV_shiftr(v1, v2);
+    case HELLO_OPUNM: return intop(-, 0, v1);
+    case HELLO_OPBNOT: return intop(^, ~l_castS2U(0), v1);
+    default: hello_assert(0); return 0;
   }
 }
 
 
-static mask_Number numarith (mask_State *L, int op, mask_Number v1,
-                                                  mask_Number v2) {
+static hello_Number numarith (hello_State *L, int op, hello_Number v1,
+                                                  hello_Number v2) {
   switch (op) {
-    case MASK_OPADD: return maski_numadd(L, v1, v2);
-    case MASK_OPSUB: return maski_numsub(L, v1, v2);
-    case MASK_OPMUL: return maski_nummul(L, v1, v2);
-    case MASK_OPDIV: return maski_numdiv(L, v1, v2);
-    case MASK_OPPOW: return maski_numpow(L, v1, v2);
-    case MASK_OPIDIV: return maski_numidiv(L, v1, v2);
-    case MASK_OPUNM: return maski_numunm(L, v1);
-    case MASK_OPMOD: return maskV_modf(L, v1, v2);
-    default: mask_assert(0); return 0;
+    case HELLO_OPADD: return helloi_numadd(L, v1, v2);
+    case HELLO_OPSUB: return helloi_numsub(L, v1, v2);
+    case HELLO_OPMUL: return helloi_nummul(L, v1, v2);
+    case HELLO_OPDIV: return helloi_numdiv(L, v1, v2);
+    case HELLO_OPPOW: return helloi_numpow(L, v1, v2);
+    case HELLO_OPIDIV: return helloi_numidiv(L, v1, v2);
+    case HELLO_OPUNM: return helloi_numunm(L, v1);
+    case HELLO_OPMOD: return helloV_modf(L, v1, v2);
+    default: hello_assert(0); return 0;
   }
 }
 
 
-int maskO_rawarith (mask_State *L, int op, const TValue *p1, const TValue *p2,
+int helloO_rawarith (hello_State *L, int op, const TValue *p1, const TValue *p2,
                    TValue *res) {
   switch (op) {
-    case MASK_OPBAND: case MASK_OPBOR: case MASK_OPBXOR:
-    case MASK_OPSHL: case MASK_OPSHR:
-    case MASK_OPBNOT: {  /* operate only on integers */
-      mask_Integer i1; mask_Integer i2;
+    case HELLO_OPBAND: case HELLO_OPBOR: case HELLO_OPBXOR:
+    case HELLO_OPSHL: case HELLO_OPSHR:
+    case HELLO_OPBNOT: {  /* operate only on integers */
+      hello_Integer i1; hello_Integer i2;
       if (tointegerns(p1, &i1) && tointegerns(p2, &i2)) {
         setivalue(res, intarith(L, op, i1, i2));
         return 1;
       }
       else return 0;  /* fail */
     }
-    case MASK_OPDIV: case MASK_OPPOW: {  /* operate only on floats */
-      mask_Number n1; mask_Number n2;
+    case HELLO_OPDIV: case HELLO_OPPOW: {  /* operate only on floats */
+      hello_Number n1; hello_Number n2;
       if (tonumberns(p1, n1) && tonumberns(p2, n2)) {
         setfltvalue(res, numarith(L, op, n1, n2));
         return 1;
@@ -108,7 +108,7 @@ int maskO_rawarith (mask_State *L, int op, const TValue *p1, const TValue *p2,
       else return 0;  /* fail */
     }
     default: {  /* other operations */
-      mask_Number n1; mask_Number n2;
+      hello_Number n1; hello_Number n2;
       if (ttisinteger(p1) && ttisinteger(p2)) {
         setivalue(res, intarith(L, op, ivalue(p1), ivalue(p2)));
         return 1;
@@ -123,16 +123,16 @@ int maskO_rawarith (mask_State *L, int op, const TValue *p1, const TValue *p2,
 }
 
 
-void maskO_arith (mask_State *L, int op, const TValue *p1, const TValue *p2,
+void helloO_arith (hello_State *L, int op, const TValue *p1, const TValue *p2,
                  StkId res) {
-  if (!maskO_rawarith(L, op, p1, p2, s2v(res))) {
+  if (!helloO_rawarith(L, op, p1, p2, s2v(res))) {
     /* could not perform raw operation; try metamethod */
-    maskT_trybinTM(L, p1, p2, res, cast(TMS, (op - MASK_OPADD) + TM_ADD));
+    helloT_trybinTM(L, p1, p2, res, cast(TMS, (op - HELLO_OPADD) + TM_ADD));
   }
 }
 
 
-int maskO_hexavalue (int c) {
+int helloO_hexavalue (int c) {
   if (lisdigit(c)) return c - '0';
   else return (ltolower(c) - 'a') + 10;
 }
@@ -148,11 +148,11 @@ static int isneg (const char **s) {
 
 /*
 ** {==================================================================
-** Mask's implementation for 'mask_strx2number'
+** Hello's implementation for 'hello_strx2number'
 ** ===================================================================
 */
 
-#if !defined(mask_strx2number)
+#if !defined(hello_strx2number)
 
 /* maximum number of significant digits to read (to avoid overflows
    even with single floats) */
@@ -162,9 +162,9 @@ static int isneg (const char **s) {
 ** convert a hexadecimal numeric string to a number, following
 ** C99 specification for 'strtod'
 */
-static mask_Number mask_strx2number (const char *s, char **endptr) {
-  int dot = mask_getlocaledecpoint();
-  mask_Number r = l_mathop(0.0);  /* result (accumulator) */
+static hello_Number hello_strx2number (const char *s, char **endptr) {
+  int dot = hello_getlocaledecpoint();
+  hello_Number r = l_mathop(0.0);  /* result (accumulator) */
   int sigdig = 0;  /* number of significant digits */
   int nosigdig = 0;  /* number of non-significant digits */
   int e = 0;  /* exponent correction */
@@ -184,7 +184,7 @@ static mask_Number mask_strx2number (const char *s, char **endptr) {
       if (sigdig == 0 && *s == '0')  /* non-significant digit (zero)? */
         nosigdig++;
       else if (++sigdig <= MAXSIGDIG)  /* can read it without overflow? */
-          r = (r * l_mathop(16.0)) + maskO_hexavalue(*s);
+          r = (r * l_mathop(16.0)) + helloO_hexavalue(*s);
       else e++; /* too many digits; ignore, but still count for exponent */
       if (hasdot) e--;  /* decimal digit? correct exponent */
     }
@@ -221,14 +221,14 @@ static mask_Number mask_strx2number (const char *s, char **endptr) {
 #endif
 
 /*
-** Convert string 's' to a Mask number (put in 'result'). Return NULL on
+** Convert string 's' to a Hello number (put in 'result'). Return NULL on
 ** fail or the address of the ending '\0' on success. ('mode' == 'x')
 ** means a hexadecimal numeral.
 */
-static const char *l_str2dloc (const char *s, mask_Number *result, int mode) {
+static const char *l_str2dloc (const char *s, hello_Number *result, int mode) {
   char *endptr;
-  *result = (mode == 'x') ? mask_strx2number(s, &endptr)  /* try to convert */
-                          : mask_str2number(s, &endptr);
+  *result = (mode == 'x') ? hello_strx2number(s, &endptr)  /* try to convert */
+                          : hello_str2number(s, &endptr);
   if (endptr == s) return NULL;  /* nothing recognized? */
   while (lisspace(cast_uchar(*endptr))) endptr++;  /* skip trailing spaces */
   return (*endptr == '\0') ? endptr : NULL;  /* OK iff no trailing chars */
@@ -236,7 +236,7 @@ static const char *l_str2dloc (const char *s, mask_Number *result, int mode) {
 
 
 /*
-** Convert string 's' to a Mask number (put in 'result') handling the
+** Convert string 's' to a Hello number (put in 'result') handling the
 ** current locale.
 ** This function accepts both the current locale or a dot as the radix
 ** mark. If the conversion fails, it may mean number has a dot but
@@ -248,7 +248,7 @@ static const char *l_str2dloc (const char *s, mask_Number *result, int mode) {
 ** - 'x' means a hexadecimal numeral
 ** - '.' just optimizes the search for the common case (no special chars)
 */
-static const char *l_str2d (const char *s, mask_Number *result) {
+static const char *l_str2d (const char *s, hello_Number *result) {
   const char *endptr;
   const char *pmode = strpbrk(s, ".xXnN");  /* look for special chars */
   int mode = pmode ? ltolower(cast_uchar(*pmode)) : 0;
@@ -261,7 +261,7 @@ static const char *l_str2d (const char *s, mask_Number *result) {
     if (pdot == NULL || strlen(s) > L_MAXLENNUM)
       return NULL;  /* string too long or no dot; fail */
     strcpy(buff, s);  /* copy string to buffer */
-    buff[pdot - s] = mask_getlocaledecpoint();  /* correct decimal point */
+    buff[pdot - s] = hello_getlocaledecpoint();  /* correct decimal point */
     endptr = l_str2dloc(buff, result, mode);  /* try again */
     if (endptr != NULL)
       endptr = s + (endptr - buff);  /* make relative to 's' */
@@ -270,11 +270,11 @@ static const char *l_str2d (const char *s, mask_Number *result) {
 }
 
 
-#define MAXBY10		cast(mask_Unsigned, MASK_MAXINTEGER / 10)
-#define MAXLASTD	cast_int(MASK_MAXINTEGER % 10)
+#define MAXBY10		cast(hello_Unsigned, HELLO_MAXINTEGER / 10)
+#define MAXLASTD	cast_int(HELLO_MAXINTEGER % 10)
 
-static const char *l_str2int (const char *s, mask_Integer *result) {
-  mask_Unsigned a = 0;
+static const char *l_str2int (const char *s, hello_Integer *result) {
+  hello_Unsigned a = 0;
   int empty = 1;
   int neg;
   while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
@@ -283,7 +283,7 @@ static const char *l_str2int (const char *s, mask_Integer *result) {
       (s[1] == 'x' || s[1] == 'X')) {  /* hex? */
     s += 2;  /* skip '0x' */
     for (; lisxdigit(cast_uchar(*s)); s++) {
-      a = a * 16 + maskO_hexavalue(*s);
+      a = a * 16 + helloO_hexavalue(*s);
       empty = 0;
     }
   }
@@ -316,8 +316,8 @@ static const char *l_str2int (const char *s, mask_Integer *result) {
 }
 
 
-size_t maskO_str2num (const char *s, TValue *o) {
-  mask_Integer i; mask_Number n;
+size_t helloO_str2num (const char *s, TValue *o) {
+  hello_Integer i; hello_Number n;
   const char *e;
   if ((e = l_str2int(s, &i)) != NULL) {  /* try as an integer */
     setivalue(o, i);
@@ -331,9 +331,9 @@ size_t maskO_str2num (const char *s, TValue *o) {
 }
 
 
-int maskO_utf8esc (char *buff, unsigned long x) {
+int helloO_utf8esc (char *buff, unsigned long x) {
   int n = 1;  /* number of bytes put in buffer (backwards) */
-  mask_assert(x <= 0x7FFFFFFFu);
+  hello_assert(x <= 0x7FFFFFFFu);
   if (x < 0x80)  /* ascii? */
     buff[UTF8BUFFSZ - 1] = cast_char(x);
   else {  /* need continuation bytes */
@@ -351,7 +351,7 @@ int maskO_utf8esc (char *buff, unsigned long x) {
 
 /*
 ** Maximum length of the conversion of a number to a string. Must be
-** enough to accommodate both MASK_INTEGER_FMT and MASK_NUMBER_FMT.
+** enough to accommodate both HELLO_INTEGER_FMT and HELLO_NUMBER_FMT.
 ** (For a long long int, this is 19 digits plus a sign and a final '\0',
 ** adding to 21. For a long double, it can go to a sign, 33 digits,
 ** the dot, an exponent letter, an exponent sign, 5 exponent digits,
@@ -365,13 +365,13 @@ int maskO_utf8esc (char *buff, unsigned long x) {
 */
 static int tostringbuff (TValue *obj, char *buff) {
   int len;
-  mask_assert(ttisnumber(obj));
+  hello_assert(ttisnumber(obj));
   if (ttisinteger(obj))
-    len = mask_integer2str(buff, MAXNUMBER2STR, ivalue(obj));
+    len = hello_integer2str(buff, MAXNUMBER2STR, ivalue(obj));
   else {
-    len = mask_number2str(buff, MAXNUMBER2STR, fltvalue(obj));
+    len = hello_number2str(buff, MAXNUMBER2STR, fltvalue(obj));
     if (buff[strspn(buff, "-0123456789")] == '\0') {  /* looks like an int? */
-      buff[len++] = mask_getlocaledecpoint();
+      buff[len++] = hello_getlocaledecpoint();
       buff[len++] = '0';  /* adds '.0' to result */
     }
   }
@@ -380,19 +380,19 @@ static int tostringbuff (TValue *obj, char *buff) {
 
 
 /*
-** Convert a number or boolean object to a Mask string, replacing the value at 'obj'
+** Convert a number or boolean object to a Hello string, replacing the value at 'obj'
 */
-void maskO_tostring (mask_State *L, TValue *obj) {
+void helloO_tostring (hello_State *L, TValue *obj) {
   if (ttisboolean(obj)) {
     if (ttistrue(obj)) {
-      setsvalue(L, obj, maskS_newliteral(L, "true"));
+      setsvalue(L, obj, helloS_newliteral(L, "true"));
     } else {
-      setsvalue(L, obj, maskS_newliteral(L, "false"));
+      setsvalue(L, obj, helloS_newliteral(L, "false"));
     }
   } else {
     char buff[MAXNUMBER2STR];
     int len = tostringbuff(obj, buff);
-    setsvalue(L, obj, maskS_newlstr(L, buff, len));
+    setsvalue(L, obj, helloS_newlstr(L, buff, len));
   }
 }
 
@@ -401,20 +401,20 @@ void maskO_tostring (mask_State *L, TValue *obj) {
 
 /*
 ** {==================================================================
-** 'maskO_pushvfstring'
+** 'helloO_pushvfstring'
 ** ===================================================================
 */
 
 /*
-** Size for buffer space used by 'maskO_pushvfstring'. It should be
-** (MASK_IDSIZE + MAXNUMBER2STR) + a minimal space for basic messages,
-** so that 'maskG_addinfo' can work directly on the buffer.
+** Size for buffer space used by 'helloO_pushvfstring'. It should be
+** (HELLO_IDSIZE + MAXNUMBER2STR) + a minimal space for basic messages,
+** so that 'helloG_addinfo' can work directly on the buffer.
 */
-#define BUFVFS		(MASK_IDSIZE + MAXNUMBER2STR + 95)
+#define BUFVFS		(HELLO_IDSIZE + MAXNUMBER2STR + 95)
 
-/* buffer used by 'maskO_pushvfstring' */
+/* buffer used by 'helloO_pushvfstring' */
 typedef struct BuffFS {
-  mask_State *L;
+  hello_State *L;
   int pushed;  /* true if there is a part of the result on the stack */
   int blen;  /* length of partial string in 'space' */
   char space[BUFVFS];  /* holds last part of the result */
@@ -424,20 +424,20 @@ typedef struct BuffFS {
 /*
 ** Push given string to the stack, as part of the result, and
 ** join it to previous partial result if there is one.
-** It may call 'maskV_concat' while using one slot from EXTRA_STACK.
+** It may call 'helloV_concat' while using one slot from EXTRA_STACK.
 ** This call cannot invoke metamethods, as both operands must be
 ** strings. It can, however, raise an error if the result is too
-** long. In that case, 'maskV_concat' frees the extra slot before
+** long. In that case, 'helloV_concat' frees the extra slot before
 ** raising the error.
 */
 static void pushstr (BuffFS *buff, const char *str, size_t lstr) {
-  mask_State *L = buff->L;
-  setsvalue2s(L, L->top, maskS_newlstr(L, str, lstr));
+  hello_State *L = buff->L;
+  setsvalue2s(L, L->top, helloS_newlstr(L, str, lstr));
   L->top++;  /* may use one slot from EXTRA_STACK */
   if (!buff->pushed)  /* no previous string on the stack? */
     buff->pushed = 1;  /* now there is one */
   else  /* join previous string with new one */
-    maskV_concat(L, 2);
+    helloV_concat(L, 2);
 }
 
 
@@ -455,7 +455,7 @@ static void clearbuff (BuffFS *buff) {
 ** space, empty it. 'sz' must fit in an empty buffer.
 */
 static char *getbuff (BuffFS *buff, int sz) {
-  mask_assert(buff->blen <= BUFVFS); mask_assert(sz <= BUFVFS);
+  hello_assert(buff->blen <= BUFVFS); hello_assert(sz <= BUFVFS);
   if (sz > BUFVFS - buff->blen)  /* not enough space? */
     clearbuff(buff);
   return buff->space + buff->blen;
@@ -494,9 +494,9 @@ static void addnum2buff (BuffFS *buff, TValue *num) {
 
 /*
 ** this function handles only '%d', '%c', '%f', '%p', '%s', and '%%'
-   conventional formats, plus Mask-specific '%I' and '%U'
+   conventional formats, plus Hello-specific '%I' and '%U'
 */
-const char *maskO_pushvfstring (mask_State *L, const char *fmt, va_list argp) {
+const char *helloO_pushvfstring (hello_State *L, const char *fmt, va_list argp) {
   BuffFS buff;  /* holds last part of the result */
   const char *e;  /* points to next '%' */
   buff.pushed = buff.blen = 0;
@@ -521,13 +521,13 @@ const char *maskO_pushvfstring (mask_State *L, const char *fmt, va_list argp) {
         addnum2buff(&buff, &num);
         break;
       }
-      case 'I': {  /* a 'mask_Integer' */
+      case 'I': {  /* a 'hello_Integer' */
         TValue num;
-        setivalue(&num, cast(mask_Integer, va_arg(argp, l_uacInt)));
+        setivalue(&num, cast(hello_Integer, va_arg(argp, l_uacInt)));
         addnum2buff(&buff, &num);
         break;
       }
-      case 'f': {  /* a 'mask_Number' */
+      case 'f': {  /* a 'hello_Number' */
         TValue num;
         setfltvalue(&num, cast_num(va_arg(argp, l_uacNumber)));
         addnum2buff(&buff, &num);
@@ -537,13 +537,13 @@ const char *maskO_pushvfstring (mask_State *L, const char *fmt, va_list argp) {
         const int sz = 3 * sizeof(void*) + 8; /* enough space for '%p' */
         char *bf = getbuff(&buff, sz);
         void *p = va_arg(argp, void *);
-        int len = mask_pointer2str(bf, sz, p);
+        int len = hello_pointer2str(bf, sz, p);
         addsize(&buff, len);
         break;
       }
       case 'U': {  /* a 'long' as a UTF-8 sequence */
         char bf[UTF8BUFFSZ];
-        int len = maskO_utf8esc(bf, va_arg(argp, long));
+        int len = helloO_utf8esc(bf, va_arg(argp, long));
         addstr2buff(&buff, bf + UTF8BUFFSZ - len, len);
         break;
       }
@@ -552,7 +552,7 @@ const char *maskO_pushvfstring (mask_State *L, const char *fmt, va_list argp) {
         break;
       }
       default: {
-        maskG_runerror(L, "invalid option '%%%c' to 'mask_pushfstring'",
+        helloG_runerror(L, "invalid option '%%%c' to 'hello_pushfstring'",
                          *(e + 1));
       }
     }
@@ -560,16 +560,16 @@ const char *maskO_pushvfstring (mask_State *L, const char *fmt, va_list argp) {
   }
   addstr2buff(&buff, fmt, strlen(fmt));  /* rest of 'fmt' */
   clearbuff(&buff);  /* empty buffer into the stack */
-  mask_assert(buff.pushed == 1);
+  hello_assert(buff.pushed == 1);
   return svalue(s2v(L->top - 1));
 }
 
 
-const char *maskO_pushfstring (mask_State *L, const char *fmt, ...) {
+const char *helloO_pushfstring (hello_State *L, const char *fmt, ...) {
   const char *msg;
   va_list argp;
   va_start(argp, fmt);
-  msg = maskO_pushvfstring(L, fmt, argp);
+  msg = helloO_pushvfstring(L, fmt, argp);
   va_end(argp);
   return msg;
 }
@@ -583,8 +583,8 @@ const char *maskO_pushfstring (mask_State *L, const char *fmt, ...) {
 
 #define addstr(a,b,l)	( memcpy(a,b,(l) * sizeof(char)), a += (l) )
 
-void maskO_chunkid (char *out, const char *source, size_t srclen) {
-  size_t bufflen = MASK_IDSIZE;  /* free space in buffer */
+void helloO_chunkid (char *out, const char *source, size_t srclen) {
+  size_t bufflen = HELLO_IDSIZE;  /* free space in buffer */
   if (*source == '=') {  /* 'literal' source */
     if (srclen <= bufflen)  /* small enough? */
       memcpy(out, source + 1, srclen * sizeof(char));

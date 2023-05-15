@@ -1,33 +1,33 @@
 #pragma once
 /*
 ** $Id: lctype.h $
-** 'ctype' functions for Mask
-** See Copyright Notice in mask.h
+** 'ctype' functions for Hello
+** See Copyright Notice in hello.h
 */
 
-#include "mask.h"
+#include "hello.h"
 
 
 /*
 ** WARNING: the functions defined here do not necessarily correspond
 ** to the similar functions in the standard C ctype.h. They are
-** optimized for the specific needs of Mask.
+** optimized for the specific needs of Hello.
 */
 
-#if !defined(MASK_USE_CTYPE)
+#if !defined(HELLO_USE_CTYPE)
 
 #if 'A' == 65 && '0' == 48
 /* ASCII case: can use its own tables; faster and fixed */
-#define MASK_USE_CTYPE	0
+#define HELLO_USE_CTYPE	0
 #else
 /* must use standard C ctype */
-#define MASK_USE_CTYPE	1
+#define HELLO_USE_CTYPE	1
 #endif
 
 #endif
 
 
-#if !MASK_USE_CTYPE	/* { */
+#if !HELLO_USE_CTYPE	/* { */
 
 #include <limits.h>
 
@@ -47,10 +47,10 @@
 /*
 ** add 1 to char to allow index -1 (EOZ)
 */
-#define testprop(c,p)	(maski_ctype_[(c)+1] & (p))
+#define testprop(c,p)	(helloi_ctype_[(c)+1] & (p))
 
 /*
-** 'lalpha' (Mask alphabetic) and 'lalnum' (Mask alphanumeric) both include '_'
+** 'lalpha' (Hello alphabetic) and 'lalnum' (Hello alphanumeric) both include '_'
 */
 #define lislalpha(c)	testprop(c, MASK(ALPHABIT))
 #define lislalnum(c)	testprop(c, (MASK(ALPHABIT) | MASK(DIGITBIT)))
@@ -62,7 +62,7 @@
 
 /*
 ** In ASCII, this 'ltolower' is correct for alphabetic characters and
-** for '.'. That is enough for Mask needs. ('check_exp' ensures that
+** for '.'. That is enough for Hello needs. ('check_exp' ensures that
 ** the character either is an upper-case letter or is unchanged by
 ** the transformation, which holds for lower-case letters and '.'.)
 */
@@ -72,7 +72,7 @@
 
 
 /* one entry for each character and for -1 (EOZ) */
-MASKI_DDEC(const lu_byte maski_ctype_[UCHAR_MAX + 2];)
+HELLOI_DDEC(const lu_byte helloi_ctype_[UCHAR_MAX + 2];)
 
 
 #else			/* }{ */
