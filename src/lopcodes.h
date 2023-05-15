@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: lopcodes.h $
-** Opcodes for Hello virtual machine
-** See Copyright Notice in hello.h
+** Opcodes for Mask virtual machine
+** See Copyright Notice in mask.h
 */
 
 #include "llimits.h"
@@ -203,7 +203,7 @@ typedef enum {
 ------------------------------------------------------------------------*/
 OP_MOVE,/*	A B	R[A] := R[B]					*/
 OP_LOADI,/*	A sBx	R[A] := sBx					*/
-OP_LOADF,/*	A sBx	R[A] := (hello_Number)sBx				*/
+OP_LOADF,/*	A sBx	R[A] := (mask_Number)sBx				*/
 OP_LOADK,/*	A Bx	R[A] := K[Bx]					*/
 OP_LOADKX,/*	A	R[A] := K[extra arg]				*/
 OP_LOADFALSE,/*	A	R[A] := false					*/
@@ -387,14 +387,14 @@ NUM_OPCODES
 ** bit 7: instruction is an MM instruction (call a metamethod)
 */
 
-HELLOI_DDEC(const lu_byte helloP_opmodes[NUM_OPCODES];)
+MASKI_DDEC(const lu_byte maskP_opmodes[NUM_OPCODES];)
 
-#define getOpMode(m)	(cast(enum OpMode, helloP_opmodes[m] & 7))
-#define testAMode(m)	(helloP_opmodes[m] & (1 << 3))
-#define testTMode(m)	(helloP_opmodes[m] & (1 << 4))
-#define testITMode(m)	(helloP_opmodes[m] & (1 << 5))
-#define testOTMode(m)	(helloP_opmodes[m] & (1 << 6))
-#define testMMMode(m)	(helloP_opmodes[m] & (1 << 7))
+#define getOpMode(m)	(cast(enum OpMode, maskP_opmodes[m] & 7))
+#define testAMode(m)	(maskP_opmodes[m] & (1 << 3))
+#define testTMode(m)	(maskP_opmodes[m] & (1 << 4))
+#define testITMode(m)	(maskP_opmodes[m] & (1 << 5))
+#define testOTMode(m)	(maskP_opmodes[m] & (1 << 6))
+#define testMMMode(m)	(maskP_opmodes[m] & (1 << 7))
 
 /* "out top" (set top for next instruction) */
 #define isOT(i)  \

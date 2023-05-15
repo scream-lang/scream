@@ -1,11 +1,11 @@
 /*
 ** $Id: ldebug.c $
 ** Debug Interface
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #define ldebug_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "lapi.h"
 #include "lcode.h"
@@ -31,15 +31,15 @@
 
 
 
-#define noHelloClosure(f)		((f) == NULL || (f)->c.tt == HELLO_VCCL)
+#define noMaskClosure(f)		((f) == NULL || (f)->c.tt == MASK_VCCL)
 
 
-static const char *funcnamefromcall (hello_State *L, CallInfo *ci,
+static const char *funcnamefromcall (mask_State *L, CallInfo *ci,
                                                    const char **name);
 
 
 static int currentpc (CallInfo *ci) {
-  hello_assert(isHello(ci));
+  mask_assert(isMask(ci));
   return pcRel(ci->u.l.savedpc, ci_func(ci)->p);
 }
 
@@ -65,7 +65,7 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
   else {
     int i = cast_uint(pc) / MAXIWTHABS - 1;  /* get an estimate */
     /* estimate must be a lower bound of the correct base */
-    hello_assert(i < 0 ||
+    mask_assert(i < 0 ||
               (i < f->sizeabslineinfo && f->abslineinfo[i].pc <= pc));
     while (i + 1 < f->sizeabslineinfo && pc >= f->abslineinfo[i + 1].pc)
       i++;  /* low estimate; adjust it */
@@ -80,14 +80,14 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
 ** first gets a base line and from there does the increments until
 ** the desired instruction.
 */
-int helloG_getfuncline (const Proto *f, int pc) {
+int maskG_getfuncline (const Proto *f, int pc) {
   if (f->lineinfo == NULL)  /* no debug information? */
     return -1;
   else {
     int basepc;
     int baseline = getbaseline(f, pc, &basepc);
     while (basepc++ < pc) {  /* walk until given instruction */
-      hello_assert(f->lineinfo[basepc] != ABSLINEINFO);
+      mask_assert(f->lineinfo[basepc] != ABSLINEINFO);
       baseline += f->lineinfo[basepc];  /* correct line */
     }
     return baseline;
@@ -96,12 +96,12 @@ int helloG_getfuncline (const Proto *f, int pc) {
 
 
 static int getcurrentline (CallInfo *ci) {
-  return helloG_getfuncline(ci_func(ci)->p, currentpc(ci));
+  return maskG_getfuncline(ci_func(ci)->p, currentpc(ci));
 }
 
 
 /*
-** Set 'trap' for all active Hello frames.
+** Set 'trap' for all active Mask frames.
 ** This function can be called during a signal, under "reasonable"
 ** assumptions. A new 'ci' is completely linked in the list before it
 ** becomes part of the "active" list, and we assume that pointers are
@@ -113,7 +113,7 @@ static int getcurrentline (CallInfo *ci) {
 */
 static void settraps (CallInfo *ci) {
   for (; ci != NULL; ci = ci->previous)
-    if (isHello(ci))
+    if (isMask(ci))
       ci->u.l.trap = 1;
 }
 
@@ -126,9 +126,9 @@ static void settraps (CallInfo *ci) {
 ** values (causes at most one wrong hook call). 'hookmask' is an atomic
 ** value. We assume that pointers are atomic too (e.g., gcc ensures that
 ** for all platforms where it runs). Moreover, 'hook' is always checked
-** before being called (see 'helloD_hook').
+** before being called (see 'maskD_hook').
 */
-HELLO_API void hello_sethook (hello_State *L, hello_Hook func, int mask, int count) {
+MASK_API void mask_sethook (mask_State *L, mask_Hook func, int mask, int count) {
   if (func == NULL || mask == 0) {  /* turn off hooks? */
     mask = 0;
     func = NULL;
@@ -138,30 +138,30 @@ HELLO_API void hello_sethook (hello_State *L, hello_Hook func, int mask, int cou
   resethookcount(L);
   L->hookmask = cast_byte(mask);
   if (mask)
-    settraps(L->ci);  /* to trace inside 'helloV_execute' */
+    settraps(L->ci);  /* to trace inside 'maskV_execute' */
 }
 
 
-HELLO_API hello_Hook hello_gethook (hello_State *L) {
+MASK_API mask_Hook mask_gethook (mask_State *L) {
   return L->hook;
 }
 
 
-HELLO_API int hello_gethookmask (hello_State *L) {
+MASK_API int mask_gethookmask (mask_State *L) {
   return L->hookmask;
 }
 
 
-HELLO_API int hello_gethookcount (hello_State *L) {
+MASK_API int mask_gethookcount (mask_State *L) {
   return L->basehookcount;
 }
 
 
-HELLO_API int hello_getstack (hello_State *L, int level, hello_Debug *ar) {
+MASK_API int mask_getstack (mask_State *L, int level, mask_Debug *ar) {
   int status;
   CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
-  hello_lock(L);
+  mask_lock(L);
   for (ci = L->ci; level > 0 && ci != &L->base_ci; ci = ci->previous)
     level--;
   if (level == 0 && ci != &L->base_ci) {  /* level found? */
@@ -169,7 +169,7 @@ HELLO_API int hello_getstack (hello_State *L, int level, hello_Debug *ar) {
     ar->i_ci = ci;
   }
   else status = 0;  /* no such level */
-  hello_unlock(L);
+  mask_unlock(L);
   return status;
 }
 
@@ -193,20 +193,20 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 }
 
 
-const char *helloG_findlocal (hello_State *L, CallInfo *ci, int n, StkId *pos) {
+const char *maskG_findlocal (mask_State *L, CallInfo *ci, int n, StkId *pos) {
   StkId base = ci->func + 1;
   const char *name = NULL;
-  if (isHello(ci)) {
+  if (isMask(ci)) {
     if (n < 0)  /* access to vararg values? */
       return findvararg(ci, n, pos);
     else
-      name = helloF_getlocalname(ci_func(ci)->p, n, currentpc(ci));
+      name = maskF_getlocalname(ci_func(ci)->p, n, currentpc(ci));
   }
   if (name == NULL) {  /* no 'standard' name? */
     StkId limit = (ci == L->ci) ? L->top : ci->next->func;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
-      name = isHello(ci) ? "(temporary)" : "(C temporary)";
+      name = isMask(ci) ? "(temporary)" : "(C temporary)";
     }
     else
       return NULL;  /* no name */
@@ -217,60 +217,60 @@ const char *helloG_findlocal (hello_State *L, CallInfo *ci, int n, StkId *pos) {
 }
 
 
-HELLO_API const char *hello_getlocal (hello_State *L, const hello_Debug *ar, int n) {
+MASK_API const char *mask_getlocal (mask_State *L, const mask_Debug *ar, int n) {
   const char *name;
-  hello_lock(L);
+  mask_lock(L);
   if (ar == NULL) {  /* information about non-active function? */
-    if (!isLfunction(s2v(L->top - 1)))  /* not a Hello function? */
+    if (!isLfunction(s2v(L->top - 1)))  /* not a Mask function? */
       name = NULL;
     else  /* consider live variables at function start (parameters) */
-      name = helloF_getlocalname(clLvalue(s2v(L->top - 1))->p, n, 0);
+      name = maskF_getlocalname(clLvalue(s2v(L->top - 1))->p, n, 0);
   }
   else {  /* active function; get information through 'ar' */
     StkId pos = NULL;  /* to avoid warnings */
-    name = helloG_findlocal(L, ar->i_ci, n, &pos);
+    name = maskG_findlocal(L, ar->i_ci, n, &pos);
     if (name) {
-      if (helloi_unlikely(ttype(s2v(pos)) == HELLO_TITER))
+      if (maski_unlikely(ttype(s2v(pos)) == MASK_TITER))
         setnilvalue(s2v(L->top));
       else
         setobjs2s(L, L->top, pos);
       api_incr_top(L);
     }
   }
-  hello_unlock(L);
+  mask_unlock(L);
   return name;
 }
 
 
-HELLO_API const char *hello_setlocal (hello_State *L, const hello_Debug *ar, int n) {
+MASK_API const char *mask_setlocal (mask_State *L, const mask_Debug *ar, int n) {
   StkId pos = NULL;  /* to avoid warnings */
   const char *name;
-  hello_lock(L);
-  name = helloG_findlocal(L, ar->i_ci, n, &pos);
+  mask_lock(L);
+  name = maskG_findlocal(L, ar->i_ci, n, &pos);
   if (name) {
     StkId to = pos + 4;
     if (ttistable(s2v(pos))) {
       if (hvalue(s2v(pos))->isfrozen) {
-        helloG_runerror(L, "attempt to modify local variable with a frozen table.");
+        maskG_runerror(L, "attempt to modify local variable with a frozen table.");
       }
     }
     setobjs2s(L, pos, L->top - 1);
     L->top--;  /* pop value */
     if (to > L->top) to = L->top;
     while(++pos < to) {
-      if (helloi_unlikely(ttype(s2v(pos)) == HELLO_TITER)) {
+      if (maski_unlikely(ttype(s2v(pos)) == MASK_TITER)) {
         setnilvalue(s2v(pos));
         break;
       }
     }
   }
-  hello_unlock(L);
+  mask_unlock(L);
   return name;
 }
 
 
-static void funcinfo (hello_Debug *ar, Closure *cl) {
-  if (noHelloClosure(cl)) {
+static void funcinfo (mask_Debug *ar, Closure *cl) {
+  if (noMaskClosure(cl)) {
     ar->source = "=[C]";
     ar->srclen = LL("=[C]");
     ar->linedefined = -1;
@@ -289,9 +289,9 @@ static void funcinfo (hello_Debug *ar, Closure *cl) {
     }
     ar->linedefined = p->linedefined;
     ar->lastlinedefined = p->lastlinedefined;
-    ar->what = (ar->linedefined == 0) ? "main" : "Hello";
+    ar->what = (ar->linedefined == 0) ? "main" : "Mask";
   }
-  helloO_chunkid(ar->short_src, ar->source, ar->srclen);
+  maskO_chunkid(ar->short_src, ar->source, ar->srclen);
 }
 
 
@@ -299,12 +299,12 @@ static int nextline (const Proto *p, int currentline, int pc) {
   if (p->lineinfo[pc] != ABSLINEINFO)
     return currentline + p->lineinfo[pc];
   else
-    return helloG_getfuncline(p, pc);
+    return maskG_getfuncline(p, pc);
 }
 
 
-static void collectvalidlines (hello_State *L, Closure *f) {
-  if (noHelloClosure(f)) {
+static void collectvalidlines (mask_State *L, Closure *f) {
+  if (noMaskClosure(f)) {
     setnilvalue(s2v(L->top));
     api_incr_top(L);
   }
@@ -313,26 +313,26 @@ static void collectvalidlines (hello_State *L, Closure *f) {
     TValue v;
     const Proto *p = f->l.p;
     int currentline = p->linedefined;
-    Table *t = helloH_new(L);  /* new table to store active lines */
+    Table *t = maskH_new(L);  /* new table to store active lines */
     sethvalue2s(L, L->top, t);  /* push it on stack */
     api_incr_top(L);
     setbtvalue(&v);  /* boolean 'true' to be the value of all indices */
     if (!p->is_vararg)  /* regular function? */
       i = 0;  /* consider all instructions */
     else {  /* vararg function */
-      hello_assert(GET_OPCODE(p->code[0]) == OP_VARARGPREP);
+      mask_assert(GET_OPCODE(p->code[0]) == OP_VARARGPREP);
       currentline = nextline(p, currentline, 0);
       i = 1;  /* skip first instruction (OP_VARARGPREP) */
     }
     for (; i < p->sizelineinfo; i++) {  /* for each instruction */
       currentline = nextline(p, currentline, i);  /* get its line */
-      helloH_setint(L, t, currentline, &v);  /* table[line] = true */
+      maskH_setint(L, t, currentline, &v);  /* table[line] = true */
     }
   }
 }
 
 
-static const char *getfuncname (hello_State *L, CallInfo *ci, const char **name) {
+static const char *getfuncname (mask_State *L, CallInfo *ci, const char **name) {
   /* calling function is a known function? */
   if (ci != NULL && !(ci->callstatus & CIST_TAIL))
     return funcnamefromcall(L, ci->previous, name);
@@ -340,7 +340,7 @@ static const char *getfuncname (hello_State *L, CallInfo *ci, const char **name)
 }
 
 
-static int auxgetinfo (hello_State *L, const char *what, hello_Debug *ar,
+static int auxgetinfo (mask_State *L, const char *what, mask_Debug *ar,
                        Closure *f, CallInfo *ci) {
   int status = 1;
   for (; *what; what++) {
@@ -350,12 +350,12 @@ static int auxgetinfo (hello_State *L, const char *what, hello_Debug *ar,
         break;
       }
       case 'l': {
-        ar->currentline = (ci && isHello(ci)) ? getcurrentline(ci) : -1;
+        ar->currentline = (ci && isMask(ci)) ? getcurrentline(ci) : -1;
         break;
       }
       case 'u': {
         ar->nups = (f == NULL) ? 0 : f->c.nupvalues;
-        if (noHelloClosure(f)) {
+        if (noMaskClosure(f)) {
           ar->isvararg = 1;
           ar->nparams = 0;
         }
@@ -387,7 +387,7 @@ static int auxgetinfo (hello_State *L, const char *what, hello_Debug *ar,
         break;
       }
       case 'L':
-      case 'f':  /* handled by hello_getinfo */
+      case 'f':  /* handled by mask_getinfo */
         break;
       default: status = 0;  /* invalid option */
     }
@@ -396,12 +396,12 @@ static int auxgetinfo (hello_State *L, const char *what, hello_Debug *ar,
 }
 
 
-HELLO_API int hello_getinfo (hello_State *L, const char *what, hello_Debug *ar) {
+MASK_API int mask_getinfo (mask_State *L, const char *what, mask_Debug *ar) {
   int status;
   Closure *cl;
   CallInfo *ci;
   TValue *func;
-  hello_lock(L);
+  mask_lock(L);
   if (*what == '>') {
     ci = NULL;
     func = s2v(L->top - 1);
@@ -412,7 +412,7 @@ HELLO_API int hello_getinfo (hello_State *L, const char *what, hello_Debug *ar) 
   else {
     ci = ar->i_ci;
     func = s2v(ci->func);
-    hello_assert(ttisfunction(func));
+    mask_assert(ttisfunction(func));
   }
   cl = ttisclosure(func) ? clvalue(func) : NULL;
   status = auxgetinfo(L, what, ar, cl, ci);
@@ -422,7 +422,7 @@ HELLO_API int hello_getinfo (hello_State *L, const char *what, hello_Debug *ar) 
   }
   if (strchr(what, 'L'))
     collectvalidlines(L, cl);
-  hello_unlock(L);
+  mask_unlock(L);
   return status;
 }
 
@@ -535,14 +535,14 @@ static const char *gxf (const Proto *p, int pc, Instruction i, int isup) {
     name = upvalname(p, t);
   else
     getobjname(p, pc, t, &name);
-  return (name && strcmp(name, HELLO_ENV) == 0) ? "global" : "field";
+  return (name && strcmp(name, MASK_ENV) == 0) ? "global" : "field";
 }
 
 
 static const char *getobjname (const Proto *p, int lastpc, int reg,
                                const char **name) {
   int pc;
-  *name = helloF_getlocalname(p, reg + 1, lastpc);
+  *name = maskF_getlocalname(p, reg + 1, lastpc);
   if (*name)  /* is a local? */
     return "local";
   /* else try symbolic execution */
@@ -603,11 +603,11 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
 
 /*
 ** Try to find a name for a function based on the code that called it.
-** (Only works when function was called by a Hello function.)
+** (Only works when function was called by a Mask function.)
 ** Returns what the name is (e.g., "for iterator", "method",
 ** "metamethod") and sets '*name' to point to the name.
 */
-static const char *funcnamefromcode (hello_State *L, const Proto *p,
+static const char *funcnamefromcode (mask_State *L, const Proto *p,
                                      int pc, const char **name) {
   TMS tm = (TMS)0;  /* (initial value avoids warnings) */
   Instruction i = p->code[pc];  /* calling instruction */
@@ -651,7 +651,7 @@ static const char *funcnamefromcode (hello_State *L, const Proto *p,
 /*
 ** Try to find a name for a function based on how it was called.
 */
-static const char *funcnamefromcall (hello_State *L, CallInfo *ci,
+static const char *funcnamefromcall (mask_State *L, CallInfo *ci,
                                                    const char **name) {
   if (ci->callstatus & CIST_HOOKED) {  /* was it called inside a hook? */
     *name = "?";
@@ -661,7 +661,7 @@ static const char *funcnamefromcall (hello_State *L, CallInfo *ci,
     *name = "__gc";
     return "metamethod";  /* report it as such */
   }
-  else if (isHello(ci))
+  else if (isMask(ci))
     return funcnamefromcode(L, ci_func(ci)->p, currentpc(ci), name);
   else
     return NULL;
@@ -706,23 +706,23 @@ static const char *getupvalname (CallInfo *ci, const TValue *o,
 }
 
 
-static const char *formatvarinfo (hello_State *L, const char *kind,
+static const char *formatvarinfo (mask_State *L, const char *kind,
                                                 const char *name) {
   if (kind == NULL)
     return "";  /* no information */
   else
-    return helloO_pushfstring(L, " (%s '%s')", kind, name);
+    return maskO_pushfstring(L, " (%s '%s')", kind, name);
 }
 
 /*
 ** Build a string with a "description" for the value 'o', such as
 ** "variable 'x'" or "upvalue 'y'".
 */
-static const char *varinfo (hello_State *L, const TValue *o) {
+static const char *varinfo (mask_State *L, const TValue *o) {
   CallInfo *ci = L->ci;
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = NULL;
-  if (isHello(ci)) {
+  if (isMask(ci)) {
     kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
     if (!kind && isinstack(ci, o))  /* no? try a register */
       kind = getobjname(ci_func(ci)->p, currentpc(ci),
@@ -735,10 +735,10 @@ static const char *varinfo (hello_State *L, const TValue *o) {
 /*
 ** Raise a type error
 */
-[[noreturn]] static void typeerror (hello_State *L, const TValue *o, const char *op,
+[[noreturn]] static void typeerror (mask_State *L, const TValue *o, const char *op,
                           const char *extra) {
-  const char *t = helloT_objtypename(L, o);
-  helloG_runerror(L, "attempt to %s a %s value%s", op, t, extra);
+  const char *t = maskT_objtypename(L, o);
+  maskG_runerror(L, "attempt to %s a %s value%s", op, t, extra);
 }
 
 
@@ -746,7 +746,7 @@ static const char *varinfo (hello_State *L, const TValue *o) {
 ** Raise a type error with "standard" information about the faulty
 ** object 'o' (using 'varinfo').
 */
-void helloG_typeerror (hello_State *L, const TValue *o, const char *op) {
+void maskG_typeerror (mask_State *L, const TValue *o, const char *op) {
   typeerror(L, o, op, varinfo(L, o));
 }
 
@@ -756,7 +756,7 @@ void helloG_typeerror (hello_State *L, const TValue *o, const char *op) {
 ** for the object based on how it was called ('funcnamefromcall'); if it
 ** cannot get a name there, try 'varinfo'.
 */
-void helloG_callerror (hello_State *L, const TValue *o) {
+void maskG_callerror (mask_State *L, const TValue *o) {
   CallInfo *ci = L->ci;
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = funcnamefromcall(L, ci, &name);
@@ -765,84 +765,84 @@ void helloG_callerror (hello_State *L, const TValue *o) {
 }
 
 
-void helloG_forerror (hello_State *L, const TValue *o, const char *what) {
-  helloG_runerror(L, "bad 'for' %s (number expected, got %s)",
-                   what, helloT_objtypename(L, o));
+void maskG_forerror (mask_State *L, const TValue *o, const char *what) {
+  maskG_runerror(L, "bad 'for' %s (number expected, got %s)",
+                   what, maskT_objtypename(L, o));
 }
 
 
-void helloG_concaterror (hello_State *L, const TValue *p1, const TValue *p2) {
+void maskG_concaterror (mask_State *L, const TValue *p1, const TValue *p2) {
   if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
-  helloG_typeerror(L, p1, "concatenate");
+  maskG_typeerror(L, p1, "concatenate");
 }
 
 
-void helloG_opinterror (hello_State *L, const TValue *p1,
+void maskG_opinterror (mask_State *L, const TValue *p1,
                          const TValue *p2, const char *msg) {
   if (!ttisnumber(p1))  /* first operand is wrong? */
     p2 = p1;  /* now second is wrong */
-  helloG_typeerror(L, p2, msg);
+  maskG_typeerror(L, p2, msg);
 }
 
 
 /*
 ** Error when both values are convertible to numbers, but not to integers
 */
-void helloG_tointerror (hello_State *L, const TValue *p1, const TValue *p2) {
-  hello_Integer temp;
-  if (!helloV_tointegerns(p1, &temp, HELLO_FLOORN2I))
+void maskG_tointerror (mask_State *L, const TValue *p1, const TValue *p2) {
+  mask_Integer temp;
+  if (!maskV_tointegerns(p1, &temp, MASK_FLOORN2I))
     p2 = p1;
-  helloG_runerror(L, "number%s has no integer representation", varinfo(L, p2));
+  maskG_runerror(L, "number%s has no integer representation", varinfo(L, p2));
 }
 
 
-void helloG_ordererror (hello_State *L, const TValue *p1, const TValue *p2) {
-  const char *t1 = helloT_objtypename(L, p1);
-  const char *t2 = helloT_objtypename(L, p2);
+void maskG_ordererror (mask_State *L, const TValue *p1, const TValue *p2) {
+  const char *t1 = maskT_objtypename(L, p1);
+  const char *t2 = maskT_objtypename(L, p2);
   if (strcmp(t1, t2) == 0)
-    helloG_runerror(L, "attempt to compare two %s values", t1);
+    maskG_runerror(L, "attempt to compare two %s values", t1);
   else
-    helloG_runerror(L, "attempt to compare %s with %s", t1, t2);
+    maskG_runerror(L, "attempt to compare %s with %s", t1, t2);
 }
 
 
 /* add src:line information to 'msg' */
-const char *helloG_addinfo (hello_State *L, const char *msg, TString *src,
+const char *maskG_addinfo (mask_State *L, const char *msg, TString *src,
                                         int line) {
-  char buff[HELLO_IDSIZE];
+  char buff[MASK_IDSIZE];
   if (src)
-    helloO_chunkid(buff, getstr(src), tsslen(src));
+    maskO_chunkid(buff, getstr(src), tsslen(src));
   else {  /* no source available; use "?" instead */
     buff[0] = '?'; buff[1] = '\0';
   }
-  return helloO_pushfstring(L, "%s:%d: %s", buff, line, msg);
+  return maskO_pushfstring(L, "%s:%d: %s", buff, line, msg);
 }
 
 
-void helloG_errormsg (hello_State *L) {
+void maskG_errormsg (mask_State *L) {
   if (L->errfunc != 0) {  /* is there an error handling function? */
     StkId errfunc = restorestack(L, L->errfunc);
-    hello_assert(ttisfunction(s2v(errfunc)));
+    mask_assert(ttisfunction(s2v(errfunc)));
     setobjs2s(L, L->top, L->top - 1);  /* move argument */
     setobjs2s(L, L->top - 1, errfunc);  /* push function */
     L->top++;  /* assume EXTRA_STACK */
-    helloD_callnoyield(L, L->top - 2, 1);  /* call it */
+    maskD_callnoyield(L, L->top - 2, 1);  /* call it */
   }
-  helloD_throw(L, HELLO_ERRRUN);
+  maskD_throw(L, MASK_ERRRUN);
 }
 
 
-void helloG_runerror (hello_State *L, const char *fmt, ...) {
+void maskG_runerror (mask_State *L, const char *fmt, ...) {
   CallInfo *ci = L->ci;
   const char *msg;
   va_list argp;
-  helloC_checkGC(L);  /* error message uses memory */
+  maskC_checkGC(L);  /* error message uses memory */
   va_start(argp, fmt);
-  msg = helloO_pushvfstring(L, fmt, argp);  /* format message */
+  msg = maskO_pushvfstring(L, fmt, argp);  /* format message */
   va_end(argp);
-  if (isHello(ci))  /* if Hello function, add source:line information */
-    helloG_addinfo(L, msg, ci_func(ci)->p->source, getcurrentline(ci));
-  helloG_errormsg(L);
+  if (isMask(ci))  /* if Mask function, add source:line information */
+    maskG_addinfo(L, msg, ci_func(ci)->p->source, getcurrentline(ci));
+  maskG_errormsg(L);
 }
 
 
@@ -850,9 +850,9 @@ void helloG_runerror (hello_State *L, const char *fmt, ...) {
 ** Check whether new instruction 'newpc' is in a different line from
 ** previous instruction 'oldpc'. More often than not, 'newpc' is only
 ** one or a few instructions after 'oldpc' (it must be after, see
-** caller), so try to avoid calling 'helloG_getfuncline'. If they are
+** caller), so try to avoid calling 'maskG_getfuncline'. If they are
 ** too far apart, there is a good chance of a ABSLINEINFO in the way,
-** so it goes directly to 'helloG_getfuncline'.
+** so it goes directly to 'maskG_getfuncline'.
 */
 static int changedline (const Proto *p, int oldpc, int newpc) {
   if (p->lineinfo == NULL)  /* no debug information? */
@@ -871,12 +871,12 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
   }
   /* either instructions are too far apart or there is an absolute line
      info in the way; compute line difference explicitly */
-  return (helloG_getfuncline(p, oldpc) != helloG_getfuncline(p, newpc));
+  return (maskG_getfuncline(p, oldpc) != maskG_getfuncline(p, newpc));
 }
 
 
 /*
-** Traces the execution of a Hello function. Called before the execution
+** Traces the execution of a Mask function. Called before the execution
 ** of each opcode, when debug is on. 'L->oldpc' stores the last
 ** instruction traced, to detect line changes. When entering a new
 ** function, 'npci' will be zero and will test as a new line whatever
@@ -887,21 +887,21 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
 ** This function is not "Protected" when called, so it should correct
 ** 'L->top' before calling anything that can run the GC.
 */
-int helloG_traceexec (hello_State *L, const Instruction *pc) {
+int maskG_traceexec (mask_State *L, const Instruction *pc) {
   CallInfo *ci = L->ci;
   lu_byte mask = L->hookmask;
   const Proto *p = ci_func(ci)->p;
   int counthook;
-  if (!(mask & (HELLO_MASKLINE | HELLO_MASKCOUNT))) {  /* no hooks? */
+  if (!(mask & (MASK_MASKLINE | MASK_MASKCOUNT))) {  /* no hooks? */
     ci->u.l.trap = 0;  /* don't need to stop again */
     return 0;  /* turn off 'trap' */
   }
   pc++;  /* reference is always next instruction */
   ci->u.l.savedpc = pc;  /* save 'pc' */
-  counthook = (--L->hookcount == 0 && (mask & HELLO_MASKCOUNT));
+  counthook = (--L->hookcount == 0 && (mask & MASK_MASKCOUNT));
   if (counthook)
     resethookcount(L);  /* reset count */
-  else if (!(mask & HELLO_MASKLINE))
+  else if (!(mask & MASK_MASKLINE))
     return 1;  /* no line hook and count != 0; nothing to be done now */
   if (ci->callstatus & CIST_HOOKYIELD) {  /* called hook last time? */
     ci->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
@@ -910,24 +910,24 @@ int helloG_traceexec (hello_State *L, const Instruction *pc) {
   if (!isIT(*(ci->u.l.savedpc - 1)))  /* top not being used? */
     L->top = ci->top;  /* correct top */
   if (counthook)
-    helloD_hook(L, HELLO_HOOKCOUNT, -1, 0, 0);  /* call count hook */
-  if (mask & HELLO_MASKLINE) {
+    maskD_hook(L, MASK_HOOKCOUNT, -1, 0, 0);  /* call count hook */
+  if (mask & MASK_MASKLINE) {
     /* 'L->oldpc' may be invalid; use zero in this case */
     int oldpc = (L->oldpc < p->sizecode) ? L->oldpc : 0;
     int npci = pcRel(pc, p);
     if (npci <= oldpc ||  /* call hook when jump back (loop), */
         changedline(p, oldpc, npci)) {  /* or when enter new line */
-      int newline = helloG_getfuncline(p, npci);
-      helloD_hook(L, HELLO_HOOKLINE, newline, 0, 0);  /* call line hook */
+      int newline = maskG_getfuncline(p, npci);
+      maskD_hook(L, MASK_HOOKLINE, newline, 0, 0);  /* call line hook */
     }
     L->oldpc = npci;  /* 'pc' of last call to line hook */
   }
-  if (L->status == HELLO_YIELD) {  /* did hook yield? */
+  if (L->status == MASK_YIELD) {  /* did hook yield? */
     if (counthook)
       L->hookcount = 1;  /* undo decrement to zero */
     ci->u.l.savedpc--;  /* undo increment (resume will increment it again) */
     ci->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
-    helloD_throw(L, HELLO_YIELD);
+    maskD_throw(L, MASK_YIELD);
   }
   return 1;  /* keep 'trap' on */
 }

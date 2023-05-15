@@ -2,7 +2,7 @@
 /*
 ** $Id: lopnames.h $
 ** Opcode names
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #include <stddef.h>
@@ -94,8 +94,8 @@ static const char *const opnames[] = {
   "VARARG",
   "VARARGPREP",
   "EXTRAARG",
-  // end of hello opcodes
+  // end of mask opcodes
   "IN",
-  // end of hello opcodes
+  // end of mask opcodes
   NULL
 };

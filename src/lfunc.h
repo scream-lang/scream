@@ -2,7 +2,7 @@
 /*
 ** $Id: lfunc.h $
 ** Auxiliary functions to manipulate prototypes and closures
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #include "lobject.h"
@@ -20,7 +20,7 @@
 
 
 /*
-** maximum number of upvalues in a closure (both C and Hello). (Value
+** maximum number of upvalues in a closure (both C and Mask). (Value
 ** must fit in a VM register.)
 */
 #define MAXUPVAL	255
@@ -44,15 +44,15 @@
 #define CLOSEKTOP	(-1)
 
 
-HELLOI_FUNC Proto *helloF_newproto (hello_State *L);
-HELLOI_FUNC CClosure *helloF_newCclosure (hello_State *L, int nupvals);
-HELLOI_FUNC LClosure *helloF_newLclosure (hello_State *L, int nupvals);
-HELLOI_FUNC void helloF_initupvals (hello_State *L, LClosure *cl);
-HELLOI_FUNC UpVal *helloF_findupval (hello_State *L, StkId level);
-HELLOI_FUNC void helloF_newtbcupval (hello_State *L, StkId level);
-HELLOI_FUNC void helloF_closeupval (hello_State *L, StkId level);
-HELLOI_FUNC StkId helloF_close (hello_State *L, StkId level, int status, int yy);
-HELLOI_FUNC void helloF_unlinkupval (UpVal *uv);
-HELLOI_FUNC void helloF_freeproto (hello_State *L, Proto *f);
-HELLOI_FUNC const char *helloF_getlocalname (const Proto *func, int local_number,
+MASKI_FUNC Proto *maskF_newproto (mask_State *L);
+MASKI_FUNC CClosure *maskF_newCclosure (mask_State *L, int nupvals);
+MASKI_FUNC LClosure *maskF_newLclosure (mask_State *L, int nupvals);
+MASKI_FUNC void maskF_initupvals (mask_State *L, LClosure *cl);
+MASKI_FUNC UpVal *maskF_findupval (mask_State *L, StkId level);
+MASKI_FUNC void maskF_newtbcupval (mask_State *L, StkId level);
+MASKI_FUNC void maskF_closeupval (mask_State *L, StkId level);
+MASKI_FUNC StkId maskF_close (mask_State *L, StkId level, int status, int yy);
+MASKI_FUNC void maskF_unlinkupval (UpVal *uv);
+MASKI_FUNC void maskF_freeproto (mask_State *L, Proto *f);
+MASKI_FUNC const char *maskF_getlocalname (const Proto *func, int local_number,
                                          int pc);

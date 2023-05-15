@@ -1,8 +1,8 @@
 #pragma once
 /*
 ** $Id: lcode.h $
-** Code generator for Hello
-** See Copyright Notice in hello.h
+** Code generator for Mask
+** See Copyright Notice in mask.h
 */
 
 #include "llex.h"
@@ -42,7 +42,7 @@ typedef enum BinOpr {
 #define foldbinop(op)	((op) <= OPR_SHR)
 
 
-#define helloK_codeABC(fs,o,a,b,c)	helloK_codeABCk(fs,o,a,b,c,0)
+#define maskK_codeABC(fs,o,a,b,c)	maskK_codeABCk(fs,o,a,b,c,0)
 
 
 typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
@@ -52,50 +52,50 @@ typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 #define getinstruction(fs,e)	((fs)->f->code[(e)->u.info])
 
 
-#define helloK_setmultret(fs,e)	helloK_setreturns(fs, e, HELLO_MULTRET)
+#define maskK_setmultret(fs,e)	maskK_setreturns(fs, e, MASK_MULTRET)
 
-#define helloK_jumpto(fs,t)	helloK_patchlist(fs, helloK_jump(fs), t)
+#define maskK_jumpto(fs,t)	maskK_patchlist(fs, maskK_jump(fs), t)
 
-HELLOI_FUNC int helloK_code (FuncState *fs, Instruction i);
-HELLOI_FUNC int helloK_codeABx (FuncState *fs, OpCode o, int A, unsigned int Bx);
-HELLOI_FUNC int helloK_codeAsBx (FuncState *fs, OpCode o, int A, int Bx);
-HELLOI_FUNC int helloK_codeABCk (FuncState *fs, OpCode o, int A,
+MASKI_FUNC int maskK_code (FuncState *fs, Instruction i);
+MASKI_FUNC int maskK_codeABx (FuncState *fs, OpCode o, int A, unsigned int Bx);
+MASKI_FUNC int maskK_codeAsBx (FuncState *fs, OpCode o, int A, int Bx);
+MASKI_FUNC int maskK_codeABCk (FuncState *fs, OpCode o, int A,
                                             int B, int C, int k);
-HELLOI_FUNC int helloK_isKint (expdesc *e);
-HELLOI_FUNC int helloK_exp2const (FuncState *fs, const expdesc *e, TValue *v);
-HELLOI_FUNC void helloK_fixline (FuncState *fs, int line);
-HELLOI_FUNC void helloK_nil (FuncState *fs, int from, int n);
-HELLOI_FUNC void helloK_reserveregs (FuncState *fs, int n);
-HELLOI_FUNC void helloK_checkstack (FuncState *fs, int n);
-HELLOI_FUNC void helloK_int (FuncState *fs, int reg, hello_Integer n);
-HELLOI_FUNC void helloK_dischargevars (FuncState *fs, expdesc *e);
-HELLOI_FUNC int helloK_exp2anyreg (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_exp2anyregup (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_exp2nextreg (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_exp2val (FuncState *fs, expdesc *e);
-HELLOI_FUNC int helloK_exp2RK (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_self (FuncState *fs, expdesc *e, expdesc *key);
-HELLOI_FUNC void helloK_indexed (FuncState *fs, expdesc *t, expdesc *k);
-HELLOI_FUNC bool helloK_isalwaytrue (expdesc *e);
-HELLOI_FUNC void helloK_goifnil (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_goiftrue (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_goiffalse (FuncState *fs, expdesc *e);
-HELLOI_FUNC void helloK_storevar (FuncState *fs, expdesc *var, expdesc *e);
-HELLOI_FUNC void helloK_setreturns (FuncState *fs, expdesc *e, int nresults);
-HELLOI_FUNC void helloK_setoneret (FuncState *fs, expdesc *e);
-HELLOI_FUNC int helloK_jump (FuncState *fs);
-HELLOI_FUNC void helloK_ret (FuncState *fs, int first, int nret);
-HELLOI_FUNC void helloK_patchlist (FuncState *fs, int list, int target);
-HELLOI_FUNC void helloK_patchtohere (FuncState *fs, int list);
-HELLOI_FUNC void helloK_concat (FuncState *fs, int *l1, int l2);
-HELLOI_FUNC int helloK_getlabel (FuncState *fs);
-HELLOI_FUNC void helloK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
-HELLOI_FUNC void helloK_infix (FuncState *fs, BinOpr op, expdesc *v);
-HELLOI_FUNC void helloK_posfix (FuncState *fs, BinOpr op, expdesc *v1,
+MASKI_FUNC int maskK_isKint (expdesc *e);
+MASKI_FUNC int maskK_exp2const (FuncState *fs, const expdesc *e, TValue *v);
+MASKI_FUNC void maskK_fixline (FuncState *fs, int line);
+MASKI_FUNC void maskK_nil (FuncState *fs, int from, int n);
+MASKI_FUNC void maskK_reserveregs (FuncState *fs, int n);
+MASKI_FUNC void maskK_checkstack (FuncState *fs, int n);
+MASKI_FUNC void maskK_int (FuncState *fs, int reg, mask_Integer n);
+MASKI_FUNC void maskK_dischargevars (FuncState *fs, expdesc *e);
+MASKI_FUNC int maskK_exp2anyreg (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_exp2anyregup (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_exp2nextreg (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_exp2val (FuncState *fs, expdesc *e);
+MASKI_FUNC int maskK_exp2RK (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_self (FuncState *fs, expdesc *e, expdesc *key);
+MASKI_FUNC void maskK_indexed (FuncState *fs, expdesc *t, expdesc *k);
+MASKI_FUNC bool maskK_isalwaytrue (expdesc *e);
+MASKI_FUNC void maskK_goifnil (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_goiftrue (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_goiffalse (FuncState *fs, expdesc *e);
+MASKI_FUNC void maskK_storevar (FuncState *fs, expdesc *var, expdesc *e);
+MASKI_FUNC void maskK_setreturns (FuncState *fs, expdesc *e, int nresults);
+MASKI_FUNC void maskK_setoneret (FuncState *fs, expdesc *e);
+MASKI_FUNC int maskK_jump (FuncState *fs);
+MASKI_FUNC void maskK_ret (FuncState *fs, int first, int nret);
+MASKI_FUNC void maskK_patchlist (FuncState *fs, int list, int target);
+MASKI_FUNC void maskK_patchtohere (FuncState *fs, int list);
+MASKI_FUNC void maskK_concat (FuncState *fs, int *l1, int l2);
+MASKI_FUNC int maskK_getlabel (FuncState *fs);
+MASKI_FUNC void maskK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
+MASKI_FUNC void maskK_infix (FuncState *fs, BinOpr op, expdesc *v);
+MASKI_FUNC void maskK_posfix (FuncState *fs, BinOpr op, expdesc *v1,
                             expdesc *v2, int line);
-HELLOI_FUNC void helloK_settablesize (FuncState *fs, int pc,
+MASKI_FUNC void maskK_settablesize (FuncState *fs, int pc,
                                   int ra, int asize, int hsize);
-HELLOI_FUNC void helloK_setlist (FuncState *fs, int base, int nelems, int tostore);
-HELLOI_FUNC void helloK_finish (FuncState *fs);
-[[noreturn]] HELLOI_FUNC void helloK_semerror (LexState *ls, const char *msg);
-HELLOI_FUNC void helloK_exp2reg (FuncState *fs, expdesc *e, int reg);
+MASKI_FUNC void maskK_setlist (FuncState *fs, int base, int nelems, int tostore);
+MASKI_FUNC void maskK_finish (FuncState *fs);
+[[noreturn]] MASKI_FUNC void maskK_semerror (LexState *ls, const char *msg);
+MASKI_FUNC void maskK_exp2reg (FuncState *fs, expdesc *e, int reg);

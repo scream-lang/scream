@@ -1,18 +1,18 @@
 /*
 ** $Id: lfunc.c $
 ** Auxiliary functions to manipulate prototypes and closures
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #define lfunc_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
 
 #include <stddef.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -24,16 +24,16 @@
 
 
 
-CClosure *helloF_newCclosure (hello_State *L, int nupvals) {
-  GCObject *o = helloC_newobj(L, HELLO_VCCL, sizeCclosure(nupvals));
+CClosure *maskF_newCclosure (mask_State *L, int nupvals) {
+  GCObject *o = maskC_newobj(L, MASK_VCCL, sizeCclosure(nupvals));
   CClosure *c = gco2ccl(o);
   c->nupvalues = cast_byte(nupvals);
   return c;
 }
 
 
-LClosure *helloF_newLclosure (hello_State *L, int nupvals) {
-  GCObject *o = helloC_newobj(L, HELLO_VLCL, sizeLclosure(nupvals));
+LClosure *maskF_newLclosure (mask_State *L, int nupvals) {
+  GCObject *o = maskC_newobj(L, MASK_VLCL, sizeLclosure(nupvals));
   LClosure *c = gco2lcl(o);
   c->p = NULL;
   c->nupvalues = cast_byte(nupvals);
@@ -45,15 +45,15 @@ LClosure *helloF_newLclosure (hello_State *L, int nupvals) {
 /*
 ** fill a closure with new closed upvalues
 */
-void helloF_initupvals (hello_State *L, LClosure *cl) {
+void maskF_initupvals (mask_State *L, LClosure *cl) {
   int i;
   for (i = 0; i < cl->nupvalues; i++) {
-    GCObject *o = helloC_newobj(L, HELLO_VUPVAL, sizeof(UpVal));
+    GCObject *o = maskC_newobj(L, MASK_VUPVAL, sizeof(UpVal));
     UpVal *uv = gco2upv(o);
     uv->v = &uv->u.value;  /* make it closed */
     setnilvalue(uv->v);
     cl->upvals[i] = uv;
-    helloC_objbarrier(L, cl, uv);
+    maskC_objbarrier(L, cl, uv);
   }
 }
 
@@ -62,8 +62,8 @@ void helloF_initupvals (hello_State *L, LClosure *cl) {
 ** Create a new upvalue at the given level, and link it to the list of
 ** open upvalues of 'L' after entry 'prev'.
 **/
-static UpVal *newupval (hello_State *L, int tbc, StkId level, UpVal **prev) {
-  GCObject *o = helloC_newobj(L, HELLO_VUPVAL, sizeof(UpVal));
+static UpVal *newupval (mask_State *L, int tbc, StkId level, UpVal **prev) {
+  GCObject *o = maskC_newobj(L, MASK_VUPVAL, sizeof(UpVal));
   UpVal *uv = gco2upv(o);
   UpVal *next = *prev;
   uv->v = s2v(level);  /* current value lives in the stack */
@@ -85,12 +85,12 @@ static UpVal *newupval (hello_State *L, int tbc, StkId level, UpVal **prev) {
 ** Find and reuse, or create if it does not exist, an upvalue
 ** at the given level.
 */
-UpVal *helloF_findupval (hello_State *L, StkId level) {
+UpVal *maskF_findupval (mask_State *L, StkId level) {
   UpVal **pp = &L->openupval;
   UpVal *p;
-  hello_assert(isintwups(L) || L->openupval == NULL);
+  mask_assert(isintwups(L) || L->openupval == NULL);
   while ((p = *pp) != NULL && uplevel(p) >= level) {  /* search for it */
-    hello_assert(!isdead(G(L), p));
+    mask_assert(!isdead(G(L), p));
     if (uplevel(p) == level)  /* corresponding upvalue? */
       return p;  /* return it */
     pp = &p->u.open.next;
@@ -105,17 +105,17 @@ UpVal *helloF_findupval (hello_State *L, StkId level) {
 ** boolean 'yy' controls whether the call is yieldable.
 ** (This function assumes EXTRA_STACK.)
 */
-static void callclosemethod (hello_State *L, TValue *obj, TValue *err, int yy) {
+static void callclosemethod (mask_State *L, TValue *obj, TValue *err, int yy) {
   StkId top = L->top;
-  const TValue *tm = helloT_gettmbyobj(L, obj, TM_CLOSE);
+  const TValue *tm = maskT_gettmbyobj(L, obj, TM_CLOSE);
   setobj2s(L, top, tm);  /* will call metamethod... */
   setobj2s(L, top + 1, obj);  /* with 'self' as the 1st argument */
   setobj2s(L, top + 2, err);  /* and error msg. as 2nd argument */
   L->top = top + 3;  /* add function and arguments */
   if (yy)
-    helloD_call(L, top, 0);
+    maskD_call(L, top, 0);
   else
-    helloD_callnoyield(L, top, 0);
+    maskD_callnoyield(L, top, 0);
 }
 
 
@@ -123,13 +123,13 @@ static void callclosemethod (hello_State *L, TValue *obj, TValue *err, int yy) {
 ** Check whether object at given level has a close metamethod and raise
 ** an error if not.
 */
-static void checkclosemth (hello_State *L, StkId level) {
-  const TValue *tm = helloT_gettmbyobj(L, s2v(level), TM_CLOSE);
+static void checkclosemth (mask_State *L, StkId level) {
+  const TValue *tm = maskT_gettmbyobj(L, s2v(level), TM_CLOSE);
   if (ttisnil(tm)) {  /* no metamethod? */
     int idx = cast_int(level - L->ci->func);  /* variable index */
-    const char *vname = helloG_findlocal(L, L->ci, idx, NULL);
+    const char *vname = maskG_findlocal(L, L->ci, idx, NULL);
     if (vname == NULL) vname = "?";
-    helloG_runerror(L, "variable '%s' got a non-closable value", vname);
+    maskG_runerror(L, "variable '%s' got a non-closable value", vname);
   }
 }
 
@@ -141,14 +141,14 @@ static void checkclosemth (hello_State *L, StkId level) {
 ** the 'level' of the upvalue being closed, as everything after that
 ** won't be used again.
 */
-static void prepcallclosemth (hello_State *L, StkId level, int status, int yy) {
+static void prepcallclosemth (mask_State *L, StkId level, int status, int yy) {
   TValue *uv = s2v(level);  /* value being closed */
   TValue *errobj;
   if (status == CLOSEKTOP)
     errobj = &G(L)->nilvalue;  /* error object is nil */
-  else {  /* 'helloD_seterrorobj' will set top to level + 2 */
+  else {  /* 'maskD_seterrorobj' will set top to level + 2 */
     errobj = s2v(level + 1);  /* error object goes after 'uv' */
-    helloD_seterrorobj(L, status, level + 1);  /* set error object */
+    maskD_seterrorobj(L, status, level + 1);  /* set error object */
   }
   callclosemethod(L, uv, errobj, yy);
 }
@@ -166,8 +166,8 @@ static void prepcallclosemth (hello_State *L, StkId level, int status, int yy) {
 /*
 ** Insert a variable in the list of to-be-closed variables.
 */
-void helloF_newtbcupval (hello_State *L, StkId level) {
-  hello_assert(level > L->tbclist);
+void maskF_newtbcupval (mask_State *L, StkId level) {
+  mask_assert(level > L->tbclist);
   if (l_isfalse(s2v(level)))
     return;  /* false doesn't need to be closed */
   checkclosemth(L, level);  /* value must have a close method */
@@ -180,8 +180,8 @@ void helloF_newtbcupval (hello_State *L, StkId level) {
 }
 
 
-void helloF_unlinkupval (UpVal *uv) {
-  hello_assert(upisopen(uv));
+void maskF_unlinkupval (UpVal *uv) {
+  mask_assert(upisopen(uv));
   *uv->u.open.previous = uv->u.open.next;
   if (uv->u.open.next)
     uv->u.open.next->u.open.previous = uv->u.open.previous;
@@ -191,18 +191,18 @@ void helloF_unlinkupval (UpVal *uv) {
 /*
 ** Close all upvalues up to the given stack level.
 */
-void helloF_closeupval (hello_State *L, StkId level) {
+void maskF_closeupval (mask_State *L, StkId level) {
   UpVal *uv;
   StkId upl;  /* stack index pointed by 'uv' */
   while ((uv = L->openupval) != NULL && (upl = uplevel(uv)) >= level) {
     TValue *slot = &uv->u.value;  /* new position for value */
-    hello_assert(uplevel(uv) < L->top);
-    helloF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
+    mask_assert(uplevel(uv) < L->top);
+    maskF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
     setobj(L, slot, uv->v);  /* move value to upvalue slot */
     uv->v = slot;  /* now current value lives here */
     if (!iswhite(uv)) {  /* neither white nor dead? */
       nw2black(uv);  /* closed upvalues cannot be gray */
-      helloC_barrier(L, uv, slot);
+      maskC_barrier(L, uv, slot);
     }
   }
 }
@@ -211,9 +211,9 @@ void helloF_closeupval (hello_State *L, StkId level) {
 /*
 ** Remove first element from the tbclist plus its dummy nodes.
 */
-static void poptbclist (hello_State *L) {
+static void poptbclist (mask_State *L) {
   StkId tbc = L->tbclist;
-  hello_assert(tbc->tbclist.delta > 0);  /* first element cannot be dummy */
+  mask_assert(tbc->tbclist.delta > 0);  /* first element cannot be dummy */
   tbc -= tbc->tbclist.delta;
   while (tbc > L->stack && tbc->tbclist.delta == 0)
     tbc -= MAXDELTA;  /* remove dummy nodes */
@@ -225,9 +225,9 @@ static void poptbclist (hello_State *L) {
 ** Close all upvalues and to-be-closed variables up to the given stack
 ** level. Return restored 'level'.
 */
-StkId helloF_close (hello_State *L, StkId level, int status, int yy) {
+StkId maskF_close (mask_State *L, StkId level, int status, int yy) {
   ptrdiff_t levelrel = savestack(L, level);
-  helloF_closeupval(L, level);  /* first, close the upvalues */
+  maskF_closeupval(L, level);  /* first, close the upvalues */
   while (L->tbclist >= level) {  /* traverse tbc's down to that level */
     StkId tbc = L->tbclist;  /* get variable index */
     poptbclist(L);  /* remove it from list */
@@ -238,8 +238,8 @@ StkId helloF_close (hello_State *L, StkId level, int status, int yy) {
 }
 
 
-Proto *helloF_newproto (hello_State *L) {
-  GCObject *o = helloC_newobj(L, HELLO_VPROTO, sizeof(Proto));
+Proto *maskF_newproto (mask_State *L) {
+  GCObject *o = maskC_newobj(L, MASK_VPROTO, sizeof(Proto));
   Proto *f = gco2p(o);
   f->k = NULL;
   f->sizek = 0;
@@ -265,15 +265,15 @@ Proto *helloF_newproto (hello_State *L) {
 }
 
 
-void helloF_freeproto (hello_State *L, Proto *f) {
-  helloM_freearray(L, f->code, f->sizecode);
-  helloM_freearray(L, f->p, f->sizep);
-  helloM_freearray(L, f->k, f->sizek);
-  helloM_freearray(L, f->lineinfo, f->sizelineinfo);
-  helloM_freearray(L, f->abslineinfo, f->sizeabslineinfo);
-  helloM_freearray(L, f->locvars, f->sizelocvars);
-  helloM_freearray(L, f->upvalues, f->sizeupvalues);
-  helloM_free(L, f);
+void maskF_freeproto (mask_State *L, Proto *f) {
+  maskM_freearray(L, f->code, f->sizecode);
+  maskM_freearray(L, f->p, f->sizep);
+  maskM_freearray(L, f->k, f->sizek);
+  maskM_freearray(L, f->lineinfo, f->sizelineinfo);
+  maskM_freearray(L, f->abslineinfo, f->sizeabslineinfo);
+  maskM_freearray(L, f->locvars, f->sizelocvars);
+  maskM_freearray(L, f->upvalues, f->sizeupvalues);
+  maskM_free(L, f);
 }
 
 
@@ -281,7 +281,7 @@ void helloF_freeproto (hello_State *L, Proto *f) {
 ** Look for n-th local variable at line 'line' in function 'func'.
 ** Returns NULL if not found.
 */
-const char *helloF_getlocalname (const Proto *f, int local_number, int pc) {
+const char *maskF_getlocalname (const Proto *f, int local_number, int pc) {
   int i;
   for (i = 0; i<f->sizelocvars && f->locvars[i].startpc <= pc; i++) {
     if (pc < f->locvars[i].endpc) {  /* is variable active? */

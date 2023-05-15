@@ -1,11 +1,11 @@
 /*
 ** $Id: llex.c $
 ** Lexical Analyzer
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #define llex_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
@@ -13,7 +13,7 @@
 #include <locale.h>
 #include <string.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "lctype.h"
 #include "ldebug.h"
@@ -34,30 +34,30 @@
 #define next(ls)	(ls->current = zgetc(ls->z))
 
 
-#define check_condition(ls,c,msg)	{ if (!(c)) helloX_syntaxerror(ls, msg); }
+#define check_condition(ls,c,msg)	{ if (!(c)) maskX_syntaxerror(ls, msg); }
 
 
 #define currIsNewline(ls)	(ls->current == '\n' || ls->current == '\r')
 
 
 /* ORDER RESERVED */
-static const char *const helloX_tokens [] = {
+static const char *const maskX_tokens [] = {
     "and", "break", "do", "else", "elseif",
     "end", "false", "for", "function", "goto", "if",
     "in", "local", "nil", "not", "or", "repeat",
     "case", "default", "as", "begin",
-    "hello_switch", "hello_continue", "hello_when", "hello_enum",
-    "hello_case", "hello_default",
-#ifndef HELLO_COMPATIBLE_SWITCH
+    "mask_switch", "mask_continue", "mask_when", "mask_enum",
+    "mask_case", "mask_default",
+#ifndef MASK_COMPATIBLE_SWITCH
     "switch",
 #endif
-#ifndef HELLO_COMPATIBLE_CONTINUE
+#ifndef MASK_COMPATIBLE_CONTINUE
     "continue",
 #endif
-#ifndef HELLO_COMPATIBLE_WHEN
+#ifndef MASK_COMPATIBLE_WHEN
     "when",
 #endif
-#ifndef HELLO_COMPATIBLE_ENUM
+#ifndef MASK_COMPATIBLE_ENUM
     "enum",
 #endif
     "return", "then", "true", "until", "while",
@@ -74,75 +74,75 @@ static const char *const helloX_tokens [] = {
 
 
 void LexState::popContext(ParserContext ctx) {
-  hello_assert(ctx != PARCTX_NONE);
+  mask_assert(ctx != PARCTX_NONE);
   if (getContext() != ctx)
-    helloX_syntaxerror(this, "parser context stack corrupted");
+    maskX_syntaxerror(this, "parser context stack corrupted");
   parser_context_stck.pop();
 }
 
 
 static void save (LexState *ls, int c) {
   Mbuffer *b = ls->buff;
-  if (helloZ_bufflen(b) + 1 > helloZ_sizebuffer(b)) {
+  if (maskZ_bufflen(b) + 1 > maskZ_sizebuffer(b)) {
     size_t newsize;
-    if (helloZ_sizebuffer(b) >= MAX_SIZE/2)
+    if (maskZ_sizebuffer(b) >= MAX_SIZE/2)
       lexerror(ls, "lexical element too long", 0);
-    newsize = helloZ_sizebuffer(b) * 2;
-    helloZ_resizebuffer(ls->L, b, newsize);
+    newsize = maskZ_sizebuffer(b) * 2;
+    maskZ_resizebuffer(ls->L, b, newsize);
   }
-  b->buffer[helloZ_bufflen(b)++] = cast_char(c);
+  b->buffer[maskZ_bufflen(b)++] = cast_char(c);
 }
 
 
-void helloX_init (hello_State *L) {
+void maskX_init (mask_State *L) {
   int i;
-  TString *e = helloS_newliteral(L, HELLO_ENV);  /* create env name */
-  helloC_fix(L, obj2gco(e));  /* never collect this name */
+  TString *e = maskS_newliteral(L, MASK_ENV);  /* create env name */
+  maskC_fix(L, obj2gco(e));  /* never collect this name */
   for (i=0; i<NUM_RESERVED; i++) {
-    TString *ts = helloS_new(L, helloX_tokens[i]);
-    helloC_fix(L, obj2gco(ts));  /* reserved words are never collected */
+    TString *ts = maskS_new(L, maskX_tokens[i]);
+    maskC_fix(L, obj2gco(ts));  /* reserved words are never collected */
     ts->extra = cast_byte(i+1);  /* reserved word */
   }
 }
 
 
-const char *helloX_token2str (LexState *ls, int token) {
+const char *maskX_token2str (LexState *ls, int token) {
   if (token < FIRST_RESERVED) {  /* single-byte symbols? */
     if (lisprint(token))
-      return helloO_pushfstring(ls->L, "'%c'", token);
+      return maskO_pushfstring(ls->L, "'%c'", token);
     else  /* control character */
-      return helloO_pushfstring(ls->L, "'<\\%d>'", token);
+      return maskO_pushfstring(ls->L, "'<\\%d>'", token);
   }
   else {
-    const char *s = helloX_tokens[token - FIRST_RESERVED];
+    const char *s = maskX_tokens[token - FIRST_RESERVED];
     if (token < TK_EOS)  /* fixed format (symbols and reserved words)? */
-      return helloO_pushfstring(ls->L, "'%s'", s);
+      return maskO_pushfstring(ls->L, "'%s'", s);
     else  /* names, strings, and numerals */
       return s;
   }
 }
 
 
-/* Converts a token into a string, same as helloX_token2str (but it doesn't quote the token). */
-const char *helloX_token2str_noq (LexState *ls, int token) {
+/* Converts a token into a string, same as maskX_token2str (but it doesn't quote the token). */
+const char *maskX_token2str_noq (LexState *ls, int token) {
   if (token < FIRST_RESERVED) {  /* single-byte symbols? */
     if (lisprint(token))
-      return helloO_pushfstring(ls->L, "%c", token);
+      return maskO_pushfstring(ls->L, "%c", token);
     else  /* control character */
-      return helloO_pushfstring(ls->L, "'<\\%d>'", token);
+      return maskO_pushfstring(ls->L, "'<\\%d>'", token);
   }
   else {
-    const char *s = helloX_tokens[token - FIRST_RESERVED];
+    const char *s = maskX_tokens[token - FIRST_RESERVED];
     if (token < TK_EOS)  /* fixed format (symbols and reserved words)? */
-      return helloO_pushfstring(ls->L, "%s", s);
+      return maskO_pushfstring(ls->L, "%s", s);
     else  /* names, strings, and numerals */
       return s;
   }
 }
 
 
-const char* helloX_reserved2str (int token) {
-  return helloX_tokens[token - FIRST_RESERVED];
+const char* maskX_reserved2str (int token) {
+  return maskX_tokens[token - FIRST_RESERVED];
 }
 
 
@@ -150,21 +150,21 @@ static const char *txtToken (LexState *ls, int token) {
   switch (token) {
     case TK_NAME: case TK_STRING:
       if (ls->hasDoneLexerPass()) {
-        return helloO_pushfstring(ls->L, "'%s'", ls->t.seminfo.ts->contents);
+        return maskO_pushfstring(ls->L, "'%s'", ls->t.seminfo.ts->contents);
       }
     case TK_FLT: case TK_INT:
       save(ls, '\0');
-      return helloO_pushfstring(ls->L, "'%s'", helloZ_buffer(ls->buff));
+      return maskO_pushfstring(ls->L, "'%s'", maskZ_buffer(ls->buff));
     default:
-      return helloX_token2str(ls, token);
+      return maskX_token2str(ls, token);
   }
 }
 
 
 [[noreturn]] static void lexerror (LexState *ls, const char *msg, int token) {
   const bool is_expected_token_error = (strcmp(msg, "syntax error") != 0);
-  msg = helloG_addinfo(ls->L, msg, ls->source, ls->getLineNumber());
-  Hello::ErrorMessage err{ ls, HRED "syntax error: " BWHT };
+  msg = maskG_addinfo(ls->L, msg, ls->source, ls->getLineNumber());
+  Mask::ErrorMessage err{ ls, HRED "syntax error: " BWHT };
   err.addMsg(msg);
   if (token) {
     if (is_expected_token_error && ls->t.IsReserved()) {
@@ -189,11 +189,11 @@ static const char *txtToken (LexState *ls, int token) {
        .addGenericHere()
        .finalize();
   }
-  helloD_throw(ls->L, HELLO_ERRSYNTAX);
+  maskD_throw(ls->L, MASK_ERRSYNTAX);
 }
 
 
-void helloX_syntaxerror (LexState *ls, const char *msg) {
+void maskX_syntaxerror (LexState *ls, const char *msg) {
   lexerror(ls, msg, ls->t.token);
 }
 
@@ -208,26 +208,26 @@ void helloX_syntaxerror (LexState *ls, const char *msg) {
 ** is a TValue readly available. Later, the code generation can change
 ** this value.
 */
-TString *helloX_newstring (LexState *ls, const char *str, size_t l) {
-  hello_State *L = ls->L;
-  TString *ts = helloS_newlstr(L, str, l);  /* create new string */
-  const TValue *o = helloH_getstr(ls->h, ts);
+TString *maskX_newstring (LexState *ls, const char *str, size_t l) {
+  mask_State *L = ls->L;
+  TString *ts = maskS_newlstr(L, str, l);  /* create new string */
+  const TValue *o = maskH_getstr(ls->h, ts);
   if (!ttisnil(o))  /* string already present? */
     ts = keystrval(nodefromval(o));  /* get saved copy */
   else {  /* not in use yet */
     TValue *stv = s2v(L->top++);  /* reserve stack space for string */
     setsvalue(L, stv, ts);  /* temporarily anchor the string */
-    helloH_finishset(L, ls->h, stv, o, stv);  /* t[string] = string */
+    maskH_finishset(L, ls->h, stv, o, stv);  /* t[string] = string */
     /* table is not a metatable, so it does not need to invalidate cache */
-    helloC_checkGC(L);
+    maskC_checkGC(L);
     L->top--;  /* remove string from stack */
   }
   return ts;
 }
 
 
-HELLOI_FUNC TString* helloX_newstring (LexState *ls, const char *str) {
-  return helloX_newstring(ls, str, strlen(str));
+MASKI_FUNC TString* maskX_newstring (LexState *ls, const char *str) {
+  return maskX_newstring(ls, str, strlen(str));
 }
 
 
@@ -237,13 +237,13 @@ HELLOI_FUNC TString* helloX_newstring (LexState *ls, const char *str) {
 */
 static void inclinenumber (LexState *ls) {
   int old = ls->current;
-  hello_assert(currIsNewline(ls));
+  mask_assert(currIsNewline(ls));
   next(ls);  /* skip '\n' or '\r' */
   if (currIsNewline(ls) && ls->current != old)
     next(ls);  /* skip '\n\r' or '\r\n' */
 
   const std::string& buff = ls->getLineBuff();
-  if (buff.find("@hello_warnings:") != std::string::npos)
+  if (buff.find("@mask_warnings:") != std::string::npos)
     ls->lexPushWarningOverride().processComment(buff);
 
   ls->lines.emplace_back(std::string{});
@@ -251,7 +251,7 @@ static void inclinenumber (LexState *ls) {
 
 
 static int llex(LexState* ls, SemInfo* seminfo);
-void helloX_setinput (hello_State *L, LexState *ls, ZIO *z, TString *source,
+void maskX_setinput (mask_State *L, LexState *ls, ZIO *z, TString *source,
                     int firstchar) {
   ls->t.token = 0;
   ls->L = L;
@@ -259,8 +259,8 @@ void helloX_setinput (hello_State *L, LexState *ls, ZIO *z, TString *source,
   ls->z = z;
   ls->fs = NULL;
   ls->source = source;
-  ls->envn = helloS_newliteral(L, HELLO_ENV);  /* get env name */
-  helloZ_resizebuffer(ls->L, ls->buff, HELLO_MINBUFFER);  /* initialize buffer */
+  ls->envn = maskS_newliteral(L, MASK_ENV);  /* get env name */
+  maskZ_resizebuffer(ls->L, ls->buff, MASK_MINBUFFER);  /* initialize buffer */
 
   while (true) {  /* perform lexer pass */
     Token& t = ls->tokens.emplace_back(Token{});
@@ -293,7 +293,7 @@ static int check_next1 (LexState *ls, int c) {
 ** saves it
 */
 static int check_next2 (LexState *ls, const char *set) {
-  hello_assert(set[2] == '\0');
+  mask_assert(set[2] == '\0');
   if (ls->current == set[0] || ls->current == set[1]) {
     save_and_next(ls);
     return 1;
@@ -302,9 +302,9 @@ static int check_next2 (LexState *ls, const char *set) {
 }
 
 
-/* HELLO_NUMBER */
+/* MASK_NUMBER */
 /*
-** This function is quite liberal in what it accepts, as 'helloO_str2num'
+** This function is quite liberal in what it accepts, as 'maskO_str2num'
 ** will reject ill-formed numerals. Roughly, it accepts the following
 ** pattern:
 **
@@ -319,7 +319,7 @@ static int read_numeral (LexState *ls, SemInfo *seminfo) {
   TValue obj;
   const char *expo = "Ee";
   int first = ls->current;
-  hello_assert(lisdigit(ls->current));
+  mask_assert(lisdigit(ls->current));
   save_and_next(ls);
   if (first == '0' && check_next2(ls, "xX"))  /* hexadecimal? */
     expo = "Pp";
@@ -337,14 +337,14 @@ static int read_numeral (LexState *ls, SemInfo *seminfo) {
   if (lislalpha(ls->current))  /* is numeral touching a letter? */
     save_and_next(ls);  /* force an error */
   save(ls, '\0');
-  if (helloO_str2num(helloZ_buffer(ls->buff), &obj) == 0)  /* format error? */
+  if (maskO_str2num(maskZ_buffer(ls->buff), &obj) == 0)  /* format error? */
     lexerror(ls, "malformed number", TK_FLT);
   if (ttisinteger(&obj)) {
     seminfo->i = ivalue(&obj);
     return TK_INT;
   }
   else {
-    hello_assert(ttisfloat(&obj));
+    mask_assert(ttisfloat(&obj));
     seminfo->r = fltvalue(&obj);
     return TK_FLT;
   }
@@ -360,7 +360,7 @@ static int read_numeral (LexState *ls, SemInfo *seminfo) {
 static size_t skip_sep (LexState *ls) {
   size_t count = 0;
   int s = ls->current;
-  hello_assert(s == '[' || s == ']');
+  mask_assert(s == '[' || s == ']');
   save_and_next(ls);
   while (ls->current == '=') {
     save_and_next(ls);
@@ -381,7 +381,7 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
     switch (ls->current) {
       case EOZ: {  /* error */
         const char *what = (seminfo ? "string" : "comment");
-        const char *msg = helloO_pushfstring(ls->L,
+        const char *msg = maskO_pushfstring(ls->L,
                      "unfinished long %s (starting at line %d)", what, line);
         lexerror(ls, msg, TK_EOS);
         break;  /* to avoid warnings */
@@ -396,7 +396,7 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
       case '\n': case '\r': {
         save(ls, '\n');
         inclinenumber(ls);
-        if (!seminfo) helloZ_resetbuffer(ls->buff);  /* avoid wasting space */
+        if (!seminfo) maskZ_resetbuffer(ls->buff);  /* avoid wasting space */
         break;
       }
       default: {
@@ -406,8 +406,8 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
     }
   } endloop:
   if (seminfo)
-    seminfo->ts = helloX_newstring(ls, helloZ_buffer(ls->buff) + sep,
-                                     helloZ_bufflen(ls->buff) - 2 * sep);
+    seminfo->ts = maskX_newstring(ls, maskZ_buffer(ls->buff) + sep,
+                                     maskZ_bufflen(ls->buff) - 2 * sep);
 }
 
 
@@ -423,14 +423,14 @@ static void esccheck (LexState *ls, int c, const char *msg) {
 static int gethexa (LexState *ls) {
   save_and_next(ls);
   esccheck (ls, lisxdigit(ls->current), "hexadecimal digit expected");
-  return helloO_hexavalue(ls->current);
+  return maskO_hexavalue(ls->current);
 }
 
 
 static int readhexaesc (LexState *ls) {
   int r = gethexa(ls);
   r = (r << 4) + gethexa(ls);
-  helloZ_buffremove(ls->buff, 2);  /* remove saved chars from buffer */
+  maskZ_buffremove(ls->buff, 2);  /* remove saved chars from buffer */
   return r;
 }
 
@@ -444,18 +444,18 @@ static unsigned long readutf8esc (LexState *ls) {
   while (cast_void(save_and_next(ls)), lisxdigit(ls->current)) {
     i++;
     esccheck(ls, r <= (0x7FFFFFFFu >> 4), "UTF-8 value too large");
-    r = (r << 4) + helloO_hexavalue(ls->current);
+    r = (r << 4) + maskO_hexavalue(ls->current);
   }
   esccheck(ls, ls->current == '}', "missing '}'");
   next(ls);  /* skip '}' */
-  helloZ_buffremove(ls->buff, i);  /* remove saved chars from buffer */
+  maskZ_buffremove(ls->buff, i);  /* remove saved chars from buffer */
   return r;
 }
 
 
 static void utf8esc (LexState *ls) {
   char buff[UTF8BUFFSZ];
-  int n = helloO_utf8esc(buff, readutf8esc(ls));
+  int n = maskO_utf8esc(buff, readutf8esc(ls));
   for (; n > 0; n--)  /* add 'buff' to string */
     save(ls, buff[UTF8BUFFSZ - n]);
 }
@@ -469,7 +469,7 @@ static int readdecesc (LexState *ls) {
     save_and_next(ls);
   }
   esccheck(ls, r <= UCHAR_MAX, "decimal escape too large");
-  helloZ_buffremove(ls->buff, i);  /* remove read digits from buffer */
+  maskZ_buffremove(ls->buff, i);  /* remove read digits from buffer */
   return r;
 }
 
@@ -504,7 +504,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
             c = ls->current; goto read_save;
           case EOZ: goto no_save;  /* will raise an error next loop */
           case 'z': {  /* zap following span of spaces */
-            helloZ_buffremove(ls->buff, 1);  /* remove '\\' */
+            maskZ_buffremove(ls->buff, 1);  /* remove '\\' */
             next(ls);  /* skip the 'z' */
             while (lisspace(ls->current)) {
               if (currIsNewline(ls)) inclinenumber(ls);
@@ -522,7 +522,7 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
          next(ls);
          /* go through */
        only_save:
-         helloZ_buffremove(ls->buff, 1);  /* remove '\\' */
+         maskZ_buffremove(ls->buff, 1);  /* remove '\\' */
          save(ls, c);
          /* go through */
        no_save: break;
@@ -532,14 +532,14 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
     }
   }
   next(ls);  /* skip delimiter */
-  seminfo->ts = helloX_newstring(ls, helloZ_buffer(ls->buff), helloZ_bufflen(ls->buff));
+  seminfo->ts = maskX_newstring(ls, maskZ_buffer(ls->buff), maskZ_bufflen(ls->buff));
   if (ls->current == del) {  // Chained, implicit string literal concatenation.
     read_string(ls, del, seminfo);
   }
 }
 
 /* assigns a reserved augmentation symbol to the lexer state token (ls->lasttoken) */
-static int llex_augmented (hello_Integer& i, int c) {
+static int llex_augmented (mask_Integer& i, int c) {
   switch (c) {
     case '+': {
       i = TK_CADD;
@@ -572,7 +572,7 @@ static int llex_augmented (hello_Integer& i, int c) {
 }
 
 static int llex (LexState *ls, SemInfo *seminfo) {
-  helloZ_resetbuffer(ls->buff);
+  maskZ_resetbuffer(ls->buff);
   for (;;) {
     switch (ls->current) {
       case '\n': case '\r': {  /* Line breaks. */
@@ -603,12 +603,12 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           next(ls);
           if (ls->current == '[') {  /* long comment? */
             size_t sep = skip_sep(ls);
-            helloZ_resetbuffer(ls->buff);  /* 'skip_sep' may dirty the buffer */
+            maskZ_resetbuffer(ls->buff);  /* 'skip_sep' may dirty the buffer */
             if (sep >= 2) {
               SemInfo si;
               read_long_string(ls, &si, sep);  /* skip long comment */
               ls->appendLineBuff(getstr(si.ts));
-              helloZ_resetbuffer(ls->buff);  /* previous call may dirty the buff. */
+              maskZ_resetbuffer(ls->buff);  /* previous call may dirty the buff. */
               break;
             }
           }
@@ -778,8 +778,8 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           do {
             save_and_next(ls);
           } while (lislalnum(ls->current));
-          ts = helloX_newstring(ls, helloZ_buffer(ls->buff),
-                                  helloZ_bufflen(ls->buff));
+          ts = maskX_newstring(ls, maskZ_buffer(ls->buff),
+                                  maskZ_bufflen(ls->buff));
           seminfo->ts = ts;
           ls->appendLineBuff(ts->contents);
           if (isreserved(ts))
@@ -882,7 +882,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       }
       default: {
         if (lislalpha(ls->current)
-#ifndef HELLO_NO_UTF8
+#ifndef MASK_NO_UTF8
             || ((ls->current & 0b10000000) && ls->current != EOF)
 #endif
           ) {  /* identifier or reserved word? */
@@ -890,12 +890,12 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           do {
             save_and_next(ls);
           } while (lislalnum(ls->current)
-#ifndef HELLO_NO_UTF8
+#ifndef MASK_NO_UTF8
               || ((ls->current & 0b10000000) && ls->current != EOF)
 #endif
             );
-          ts = helloX_newstring(ls, helloZ_buffer(ls->buff),
-                                  helloZ_bufflen(ls->buff));
+          ts = maskX_newstring(ls, maskZ_buffer(ls->buff),
+                                  maskZ_bufflen(ls->buff));
           seminfo->ts = ts;
           ls->appendLineBuff(ts->toCpp());
           if (isreserved(ts))  /* reserved word? */
@@ -916,7 +916,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 }
 
 
-static void helloX_onPosUpdate (LexState *ls) {
+static void maskX_onPosUpdate (LexState *ls) {
   /* update ls->t */
   ls->t = ls->tokens.at(ls->tidx);
   /* update ls->lastline */
@@ -926,34 +926,34 @@ static void helloX_onPosUpdate (LexState *ls) {
 }
 
 
-void helloX_next (LexState *ls) {
+void maskX_next (LexState *ls) {
   ++ls->tidx;
-  helloX_onPosUpdate(ls);
+  maskX_onPosUpdate(ls);
 }
 
 
-void helloX_prev (LexState *ls) {
+void maskX_prev (LexState *ls) {
   --ls->tidx;
-  helloX_onPosUpdate(ls);
+  maskX_onPosUpdate(ls);
 }
 
 
-size_t helloX_getpos (LexState *ls) {
+size_t maskX_getpos (LexState *ls) {
   return ls->tidx;
 }
 
 
-void helloX_setpos(LexState *ls, size_t pos) {
+void maskX_setpos(LexState *ls, size_t pos) {
   ls->tidx = pos;
-  helloX_onPosUpdate(ls);
+  maskX_onPosUpdate(ls);
 }
 
 
-int helloX_lookahead (LexState *ls) {
+int maskX_lookahead (LexState *ls) {
   return ls->tokens.at(ls->tidx + 1).token;
 }
 
 
-const Token& helloX_lookbehind (LexState *ls) {
+const Token& maskX_lookbehind (LexState *ls) {
   return ls->tokens.at(ls->tidx - 1);
 }

@@ -2,7 +2,7 @@
 /*
 ** $Id: llex.h $
 ** Lexical Analyzer
-** See Copyright Notice in hello.h
+** See Copyright Notice in mask.h
 */
 
 #include <limits.h>
@@ -24,8 +24,8 @@
 #define FIRST_RESERVED	(UCHAR_MAX + 1)
 
 
-#if !defined(HELLO_ENV)
-#define HELLO_ENV		"_ENV"
+#if !defined(MASK_ENV)
+#define MASK_ENV		"_ENV"
 #endif
 
 
@@ -42,16 +42,16 @@ enum RESERVED {
   TK_PSWITCH, TK_PCONTINUE, TK_PWHEN, TK_PENUM, // New compatibility keywords.
   TK_PCASE, TK_PDEFAULT, // Deprecated compatibility keywords.
   /* New non-compatible keywords. */
-#ifndef HELLO_COMPATIBLE_SWITCH
+#ifndef MASK_COMPATIBLE_SWITCH
   TK_SWITCH,
 #endif
-#ifndef HELLO_COMPATIBLE_CONTINUE
+#ifndef MASK_COMPATIBLE_CONTINUE
   TK_CONTINUE,
 #endif
-#ifndef HELLO_COMPATIBLE_WHEN
+#ifndef MASK_COMPATIBLE_WHEN
   TK_WHEN,
 #endif
-#ifndef HELLO_COMPATIBLE_ENUM
+#ifndef MASK_COMPATIBLE_ENUM
   TK_ENUM,
 #endif
   TK_RETURN, TK_THEN, TK_TRUE, TK_UNTIL, TK_WHILE,
@@ -63,7 +63,7 @@ enum RESERVED {
   TK_SHR, TK_DBCOLON, 
   TK_EOS, TK_FLT, 
   TK_INT, TK_NAME, TK_STRING,
-  /* hello symbols */
+  /* mask symbols */
   TK_CSUB, TK_CSHL,     /* subtraction & shift left    */
   TK_CSHR, TK_CBAND,    /* shift right & bitwise AND   */
   TK_CADD, TK_CMUL,     /* addition and multiplication */
@@ -82,8 +82,8 @@ enum RESERVED {
 
 
 typedef union {
-  hello_Number r;
-  hello_Integer i;
+  mask_Number r;
+  mask_Integer i;
   TString *ts;
 } SemInfo;  /* semantics information */
 
@@ -130,7 +130,7 @@ struct Token {
 
 /*
 ** If you wish to add a new warning type, you need to update WarningType from the bottom.
-** Then, you need to enter the 'name' of your warning at the bottom of helloX_warnIds, so the user can toggle it during runtime.
+** Then, you need to enter the 'name' of your warning at the bottom of maskX_warnIds, so the user can toggle it during runtime.
 */
 
 
@@ -148,7 +148,7 @@ enum WarningType : int
 };
 
 
-static const std::vector<std::string> helloX_warnNames = {
+static const std::vector<std::string> maskX_warnNames = {
   "all",
   "var-shadow",
   "type-mismatch",
@@ -199,7 +199,7 @@ struct WarningConfig
       std::string enable  = "enable-";
       std::string disable = "disable-";
 
-      const std::string& name = helloX_warnNames[id];
+      const std::string& name = maskX_warnNames[id];
 
       enable += name;
       disable += name;
@@ -223,7 +223,7 @@ struct WarningConfig
 
   [[nodiscard]] static const char* getWarningName(const WarningType w)
   {
-    return helloX_warnNames.at((size_t)w).c_str();
+    return maskX_warnNames.at((size_t)w).c_str();
   }
 };
 
@@ -253,7 +253,7 @@ struct LexState {
   std::vector<Token> tokens;
   Token t;  /* current token */
   struct FuncState *fs;  /* current function (parser) */
-  struct hello_State *L;
+  struct mask_State *L;
   ZIO *z;  /* input stream */
   Mbuffer *buff;  /* buffer for tokens */
   Table *h;  /* to avoid collection/reuse strings */
@@ -356,7 +356,7 @@ struct LexState {
   [[nodiscard]] bool shouldEmitWarning(int line, WarningType warning_type) const {
     const auto& linebuff = this->getLineString(line);
     const auto& lastattr = line > 1 ? this->getLineString(line - 1) : linebuff;
-    return lastattr.find("@hello_warnings: disable-next") == std::string::npos && getWarningConfig().Get(warning_type);
+    return lastattr.find("@mask_warnings: disable-next") == std::string::npos && getWarningConfig().Get(warning_type);
   }
 };
 
@@ -365,18 +365,18 @@ struct LexState {
 #endif
 
 
-HELLOI_FUNC void helloX_init (hello_State *L);
-HELLOI_FUNC void helloX_setinput (hello_State *L, LexState *ls, ZIO *z,
+MASKI_FUNC void maskX_init (mask_State *L);
+MASKI_FUNC void maskX_setinput (mask_State *L, LexState *ls, ZIO *z,
                               TString *source, int firstchar);
-HELLOI_FUNC TString *helloX_newstring (LexState *ls, const char *str, size_t l);
-HELLOI_FUNC TString* helloX_newstring (LexState *ls, const char *str);
-HELLOI_FUNC void helloX_next (LexState *ls);
-HELLOI_FUNC void helloX_prev (LexState *ls);
-[[nodiscard]] HELLOI_FUNC size_t helloX_getpos(LexState *ls);
-HELLOI_FUNC void helloX_setpos(LexState *ls, size_t pos);
-HELLOI_FUNC int helloX_lookahead(LexState *ls);
-HELLOI_FUNC const Token& helloX_lookbehind(LexState *ls);
-[[noreturn]] HELLOI_FUNC void helloX_syntaxerror (LexState *ls, const char *s);
-HELLOI_FUNC const char *helloX_token2str (LexState *ls, int token);
-HELLOI_FUNC const char *helloX_token2str_noq (LexState *ls, int token);
-HELLOI_FUNC const char *helloX_reserved2str (int token);
+MASKI_FUNC TString *maskX_newstring (LexState *ls, const char *str, size_t l);
+MASKI_FUNC TString* maskX_newstring (LexState *ls, const char *str);
+MASKI_FUNC void maskX_next (LexState *ls);
+MASKI_FUNC void maskX_prev (LexState *ls);
+[[nodiscard]] MASKI_FUNC size_t maskX_getpos(LexState *ls);
+MASKI_FUNC void maskX_setpos(LexState *ls, size_t pos);
+MASKI_FUNC int maskX_lookahead(LexState *ls);
+MASKI_FUNC const Token& maskX_lookbehind(LexState *ls);
+[[noreturn]] MASKI_FUNC void maskX_syntaxerror (LexState *ls, const char *s);
+MASKI_FUNC const char *maskX_token2str (LexState *ls, int token);
+MASKI_FUNC const char *maskX_token2str_noq (LexState *ls, int token);
+MASKI_FUNC const char *maskX_reserved2str (int token);

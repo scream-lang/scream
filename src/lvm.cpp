@@ -1,11 +1,11 @@
 /*
 ** $Id: lvm.c $
-** Hello virtual machine
-** See Copyright Notice in hello.h
+** Mask virtual machine
+** See Copyright Notice in mask.h
 */
 
 #define lvm_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -30,14 +30,14 @@
 #include "ltm.h"
 #include "lvm.h"
 
-#ifdef HELLO_ETL_ENABLE
+#ifdef MASK_ETL_ENABLE
 #include <chrono>
 #endif
 
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
 #include <string>
 #include <sstream>
-#include "lauxlib.h" // hello_writestring
+#include "lauxlib.h" // mask_writestring
 #include "lopnames.h"
 #endif
 
@@ -61,11 +61,11 @@
 ** of an integer. In a worst case, NBM == 113 for long double and
 ** sizeof(long) == 32.)
 */
-#if ((((HELLO_MAXINTEGER >> (NBM / 4)) >> (NBM / 4)) >> (NBM / 4)) \
+#if ((((MASK_MAXINTEGER >> (NBM / 4)) >> (NBM / 4)) >> (NBM / 4)) \
     >> (NBM - (3 * (NBM / 4))))  >  0
 
 /* limit for integers that fit in a float */
-#define MAXINTFITSF	((hello_Unsigned)1 << NBM)
+#define MAXINTFITSF	((mask_Unsigned)1 << NBM)
 
 /* check whether 'i' is in the interval [-MAXINTFITSF, MAXINTFITSF] */
 #define l_intfitsf(i)	((MAXINTFITSF + l_castS2U(i)) <= (2 * MAXINTFITSF))
@@ -85,11 +85,11 @@
 ** and return 0.
 */
 static int l_strton (const TValue *obj, TValue *result) {
-  hello_assert(obj != result);
+  mask_assert(obj != result);
   if (!cvt2num(obj))  /* is object not a string? */
     return 0;
   else
-    return (helloO_str2num(svalue(obj), result) == vslen(obj) + 1);
+    return (maskO_str2num(svalue(obj), result) == vslen(obj) + 1);
 }
 
 
@@ -97,14 +97,14 @@ static int l_strton (const TValue *obj, TValue *result) {
 ** Try to convert a value to a float. The float case is already handled
 ** by the macro 'tonumber'.
 */
-int helloV_tonumber_ (const TValue *obj, hello_Number *n) {
+int maskV_tonumber_ (const TValue *obj, mask_Number *n) {
   TValue v;
   if (ttisinteger(obj)) {
     *n = cast_num(ivalue(obj));
     return 1;
   }
   else if (l_strton(obj, &v)) {  /* string coercible to number? */
-    *n = nvalue(&v);  /* convert result of 'helloO_str2num' to a float */
+    *n = nvalue(&v);  /* convert result of 'maskO_str2num' to a float */
     return 1;
   }
   else
@@ -115,14 +115,14 @@ int helloV_tonumber_ (const TValue *obj, hello_Number *n) {
 /*
 ** try to convert a float to an integer, rounding according to 'mode'.
 */
-int helloV_flttointeger (hello_Number n, hello_Integer *p, F2Imod mode) {
-  hello_Number f = l_floor(n);
+int maskV_flttointeger (mask_Number n, mask_Integer *p, F2Imod mode) {
+  mask_Number f = l_floor(n);
   if (n != f) {  /* not an integral value? */
     if (mode == F2Ieq) return 0;  /* fails if mode demands integral value */
     else if (mode == F2Iceil)  /* needs ceil? */
       f += 1;  /* convert floor to ceil (remember: n != f) */
   }
-  return hello_numbertointeger(f, p);
+  return mask_numbertointeger(f, p);
 }
 
 
@@ -131,9 +131,9 @@ int helloV_flttointeger (hello_Number n, hello_Integer *p, F2Imod mode) {
 ** without string coercion.
 ** ("Fast track" handled by macro 'tointegerns'.)
 */
-int helloV_tointegerns (const TValue *obj, hello_Integer *p, F2Imod mode) {
+int maskV_tointegerns (const TValue *obj, mask_Integer *p, F2Imod mode) {
   if (ttisfloat(obj))
-    return helloV_flttointeger(fltvalue(obj), p, mode);
+    return maskV_flttointeger(fltvalue(obj), p, mode);
   else if (ttisinteger(obj)) {
     *p = ivalue(obj);
     return 1;
@@ -146,11 +146,11 @@ int helloV_tointegerns (const TValue *obj, hello_Integer *p, F2Imod mode) {
 /*
 ** try to convert a value to an integer.
 */
-int helloV_tointeger (const TValue *obj, hello_Integer *p, F2Imod mode) {
+int maskV_tointeger (const TValue *obj, mask_Integer *p, F2Imod mode) {
   TValue v;
   if (l_strton(obj, &v))  /* does 'obj' point to a numerical string? */
     obj = &v;  /* change it to point to its corresponding number */
-  return helloV_tointegerns(obj, p, mode);
+  return maskV_tointegerns(obj, p, mode);
 }
 
 
@@ -163,28 +163,28 @@ int helloV_tointeger (const TValue *obj, hello_Integer *p, F2Imod mode) {
 ** If the limit is an integer or can be converted to an integer,
 ** rounding down, that is the limit.
 ** Otherwise, check whether the limit can be converted to a float. If
-** the float is too large, clip it to HELLO_MAXINTEGER.  If the float
+** the float is too large, clip it to MASK_MAXINTEGER.  If the float
 ** is too negative, the loop should not run, because any initial
 ** integer value is greater than such limit; so, the function returns
 ** true to signal that. (For this latter case, no integer limit would be
-** correct; even a limit of HELLO_MININTEGER would run the loop once for
-** an initial value equal to HELLO_MININTEGER.)
+** correct; even a limit of MASK_MININTEGER would run the loop once for
+** an initial value equal to MASK_MININTEGER.)
 */
-static int forlimit (hello_State *L, hello_Integer init, const TValue *lim,
-                                   hello_Integer *p, hello_Integer step) {
-  if (!helloV_tointeger(lim, p, (step < 0 ? F2Iceil : F2Ifloor))) {
+static int forlimit (mask_State *L, mask_Integer init, const TValue *lim,
+                                   mask_Integer *p, mask_Integer step) {
+  if (!maskV_tointeger(lim, p, (step < 0 ? F2Iceil : F2Ifloor))) {
     /* not coercible to in integer */
-    hello_Number flim;  /* try to convert to float */
+    mask_Number flim;  /* try to convert to float */
     if (!tonumber(lim, &flim)) /* cannot convert to float? */
-      helloG_forerror(L, lim, "limit");
+      maskG_forerror(L, lim, "limit");
     /* else 'flim' is a float out of integer bounds */
-    if (helloi_numlt(0, flim)) {  /* if it is positive, it is too large */
+    if (maski_numlt(0, flim)) {  /* if it is positive, it is too large */
       if (step < 0) return 1;  /* initial value must be less than it */
-      *p = HELLO_MAXINTEGER;  /* truncate */
+      *p = MASK_MAXINTEGER;  /* truncate */
     }
     else {  /* it is less than min integer */
       if (step > 0) return 1;  /* initial value must be greater than it */
-      *p = HELLO_MININTEGER;  /* truncate */
+      *p = MASK_MININTEGER;  /* truncate */
     }
   }
   return (step > 0 ? init > *p : init < *p);  /* not to run? */
@@ -200,21 +200,21 @@ static int forlimit (hello_State *L, hello_Integer init, const TValue *lim,
 **   ra + 2 : step
 **   ra + 3 : control variable
 */
-static int forprep (hello_State *L, StkId ra) {
+static int forprep (mask_State *L, StkId ra) {
   TValue *pinit = s2v(ra);
   TValue *plimit = s2v(ra + 1);
   TValue *pstep = s2v(ra + 2);
   if (ttisinteger(pinit) && ttisinteger(pstep)) { /* integer loop? */
-    hello_Integer init = ivalue(pinit);
-    hello_Integer step = ivalue(pstep);
-    hello_Integer limit;
+    mask_Integer init = ivalue(pinit);
+    mask_Integer step = ivalue(pstep);
+    mask_Integer limit;
     if (step == 0)
-      helloG_runerror(L, "'for' step is zero");
+      maskG_runerror(L, "'for' step is zero");
     setivalue(s2v(ra + 3), init);  /* control variable */
     if (forlimit(L, init, plimit, &limit, step))
       return 1;  /* skip the loop */
     else {  /* prepare loop counter */
-      hello_Unsigned count;
+      mask_Unsigned count;
       if (step > 0) {  /* ascending loop? */
         count = l_castS2U(limit) - l_castS2U(init);
         if (step != 1)  /* avoid division in the too common case */
@@ -231,17 +231,17 @@ static int forprep (hello_State *L, StkId ra) {
     }
   }
   else {  /* try making all values floats */
-    hello_Number init; hello_Number limit; hello_Number step;
+    mask_Number init; mask_Number limit; mask_Number step;
     if (l_unlikely(!tonumber(plimit, &limit)))
-      helloG_forerror(L, plimit, "limit");
+      maskG_forerror(L, plimit, "limit");
     if (l_unlikely(!tonumber(pstep, &step)))
-      helloG_forerror(L, pstep, "step");
+      maskG_forerror(L, pstep, "step");
     if (l_unlikely(!tonumber(pinit, &init)))
-      helloG_forerror(L, pinit, "initial value");
+      maskG_forerror(L, pinit, "initial value");
     if (step == 0)
-      helloG_runerror(L, "'for' step is zero");
-    if (helloi_numlt(0, step) ? helloi_numlt(limit, init)
-                            : helloi_numlt(init, limit))
+      maskG_runerror(L, "'for' step is zero");
+    if (maski_numlt(0, step) ? maski_numlt(limit, init)
+                            : maski_numlt(init, limit))
       return 1;  /* skip the loop */
     else {
       /* make sure internal values are all floats */
@@ -261,12 +261,12 @@ static int forprep (hello_State *L, StkId ra) {
 ** written online with opcode OP_FORLOOP, for performance.)
 */
 static int floatforloop (StkId ra) {
-  hello_Number step = fltvalue(s2v(ra + 2));
-  hello_Number limit = fltvalue(s2v(ra + 1));
-  hello_Number idx = fltvalue(s2v(ra));  /* internal index */
-  idx = helloi_numadd(L, idx, step);  /* increment index */
-  if (helloi_numlt(0, step) ? helloi_numle(idx, limit)
-                          : helloi_numle(limit, idx)) {
+  mask_Number step = fltvalue(s2v(ra + 2));
+  mask_Number limit = fltvalue(s2v(ra + 1));
+  mask_Number idx = fltvalue(s2v(ra));  /* internal index */
+  idx = maski_numadd(L, idx, step);  /* increment index */
+  if (maski_numlt(0, step) ? maski_numle(idx, limit)
+                          : maski_numle(limit, idx)) {
     chgfltvalue(s2v(ra), idx);  /* update internal index */
     setfltvalue(s2v(ra + 3), idx);  /* and control variable */
     return 1;  /* jump back */
@@ -281,37 +281,37 @@ static int floatforloop (StkId ra) {
 ** if 'slot' is NULL, 't' is not a table; otherwise, 'slot' points to
 ** t[k] entry (which must be empty).
 */
-void helloV_finishget (hello_State *L, const TValue *t, TValue *key, StkId val,
+void maskV_finishget (mask_State *L, const TValue *t, TValue *key, StkId val,
                       const TValue *slot) {
   int loop;  /* counter to avoid infinite loops */
   const TValue *tm;  /* metamethod */
   int isValueString = ttisstring(t) && ttisinteger(key);
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     if (slot == NULL) {  /* 't' is not a table? */
-      hello_assert(!ttistable(t));
+      mask_assert(!ttistable(t));
       if (isValueString) { /* index for character of string */
-        hello_Integer index = ivalue(key);
+        mask_Integer index = ivalue(key);
         if (index < 0) { /* negative index, index from end of string */
           index += vslen(t) + 1;
         }
-        if (((hello_Integer)vslen(t) < index) || (index < 1)) { /* invalid index */
+        if (((mask_Integer)vslen(t) < index) || (index < 1)) { /* invalid index */
           setnilvalue(s2v(val));
           return;
         }
         else { /* index is valid */
-          setsvalue(L, s2v(val), helloS_newlstr(L, &tsvalue(t)->contents[index - 1], 1));
+          setsvalue(L, s2v(val), maskS_newlstr(L, &tsvalue(t)->contents[index - 1], 1));
           return;
         }
       }
       else {
-        tm = helloT_gettmbyobj(L, t, TM_INDEX);
+        tm = maskT_gettmbyobj(L, t, TM_INDEX);
         if (l_unlikely(notm(tm)))
-          helloG_typeerror(L, t, "index");  /* no metamethod */
+          maskG_typeerror(L, t, "index");  /* no metamethod */
         /* else will try the metamethod */
       }
     }
     else {  /* 't' is a table */
-      hello_assert(isempty(slot));
+      mask_assert(isempty(slot));
       tm = fasttm(L, hvalue(t)->metatable, TM_INDEX);  /* table's metamethod */
       if (tm == NULL) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
@@ -320,17 +320,17 @@ void helloV_finishget (hello_State *L, const TValue *t, TValue *key, StkId val,
       /* else will try the metamethod */
     }
     if (ttisfunction(tm)) {  /* is metamethod a function? */
-      helloT_callTMres(L, tm, t, key, val);  /* call it */
+      maskT_callTMres(L, tm, t, key, val);  /* call it */
       return;
     }
     t = tm;  /* else try to access 'tm[key]' */
-    if (helloV_fastget(L, t, key, slot, helloH_get)) {  /* fast track? */
+    if (maskV_fastget(L, t, key, slot, maskH_get)) {  /* fast track? */
       setobj2s(L, val, slot);  /* done */
       return;
     }
-    /* else repeat (tail call 'helloV_finishget') */
+    /* else repeat (tail call 'maskV_finishget') */
   }
-  helloG_runerror(L, "'__index' chain too long; possible loop");
+  maskG_runerror(L, "'__index' chain too long; possible loop");
 }
 
 
@@ -339,43 +339,43 @@ void helloV_finishget (hello_State *L, const TValue *t, TValue *key, StkId val,
 ** If 'slot' is NULL, 't' is not a table.  Otherwise, 'slot' points
 ** to the entry 't[key]', or to a value with an absent key if there
 ** is no such entry.  (The value at 'slot' must be empty, otherwise
-** 'helloV_fastget' would have done the job.)
+** 'maskV_fastget' would have done the job.)
 */
-void helloV_finishset (hello_State *L, const TValue *t, TValue *key,
+void maskV_finishset (mask_State *L, const TValue *t, TValue *key,
                      TValue *val, const TValue *slot) {
   int loop;  /* counter to avoid infinite loops */
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;  /* '__newindex' metamethod */
     if (slot != NULL) {  /* is 't' a table? */
       Table *h = hvalue(t);  /* save 't' table */
-      hello_assert(isempty(slot));  /* slot must be empty */
+      mask_assert(isempty(slot));  /* slot must be empty */
       tm = fasttm(L, h->metatable, TM_NEWINDEX);  /* get metamethod */
       if (tm == NULL) {  /* no metamethod? */
-        helloH_finishset(L, h, key, slot, val);  /* set new value */
+        maskH_finishset(L, h, key, slot, val);  /* set new value */
         invalidateTMcache(h);
-        helloC_barrierback(L, obj2gco(h), val);
+        maskC_barrierback(L, obj2gco(h), val);
         return;
       }
       /* else will try the metamethod */
     }
     else {  /* not a table; check metamethod */
-      tm = helloT_gettmbyobj(L, t, TM_NEWINDEX);
+      tm = maskT_gettmbyobj(L, t, TM_NEWINDEX);
       if (l_unlikely(notm(tm)))
-        helloG_typeerror(L, t, "index");
+        maskG_typeerror(L, t, "index");
     }
     /* try the metamethod */
     if (ttisfunction(tm)) {
-      helloT_callTM(L, tm, t, key, val);
+      maskT_callTM(L, tm, t, key, val);
       return;
     }
     t = tm;  /* else repeat assignment over 'tm' */
-    if (helloV_fastget(L, t, key, slot, helloH_get)) {
-      helloV_finishfastset(L, t, slot, val);
+    if (maskV_fastget(L, t, key, slot, maskH_get)) {
+      maskV_finishfastset(L, t, slot, val);
       return;  /* done */
     }
-    /* else 'return helloV_finishset(L, t, key, val, slot)' (loop) */
+    /* else 'return maskV_finishset(L, t, key, val, slot)' (loop) */
   }
-  helloG_runerror(L, "'__newindex' chain too long; possible loop");
+  maskG_runerror(L, "'__newindex' chain too long; possible loop");
 }
 
 
@@ -420,12 +420,12 @@ static int l_strcmp (const TString *ls, const TString *rs) {
 ** from float to int.)
 ** When 'f' is NaN, comparisons must result in false.
 */
-l_sinline int LTintfloat (hello_Integer i, hello_Number f) {
+l_sinline int LTintfloat (mask_Integer i, mask_Number f) {
   if (l_intfitsf(i))
-    return helloi_numlt(cast_num(i), f);  /* compare them as floats */
+    return maski_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
-    hello_Integer fi;
-    if (helloV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
+    mask_Integer fi;
+    if (maskV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
       return i < fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -437,12 +437,12 @@ l_sinline int LTintfloat (hello_Integer i, hello_Number f) {
 ** Check whether integer 'i' is less than or equal to float 'f'.
 ** See comments on previous function.
 */
-l_sinline int LEintfloat (hello_Integer i, hello_Number f) {
+l_sinline int LEintfloat (mask_Integer i, mask_Number f) {
   if (l_intfitsf(i))
-    return helloi_numle(cast_num(i), f);  /* compare them as floats */
+    return maski_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
-    hello_Integer fi;
-    if (helloV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
+    mask_Integer fi;
+    if (maskV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
       return i <= fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -454,12 +454,12 @@ l_sinline int LEintfloat (hello_Integer i, hello_Number f) {
 ** Check whether float 'f' is less than integer 'i'.
 ** See comments on previous function.
 */
-l_sinline int LTfloatint (hello_Number f, hello_Integer i) {
+l_sinline int LTfloatint (mask_Number f, mask_Integer i) {
   if (l_intfitsf(i))
-    return helloi_numlt(f, cast_num(i));  /* compare them as floats */
+    return maski_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
-    hello_Integer fi;
-    if (helloV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
+    mask_Integer fi;
+    if (maskV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
       return fi < i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */
@@ -471,12 +471,12 @@ l_sinline int LTfloatint (hello_Number f, hello_Integer i) {
 ** Check whether float 'f' is less than or equal to integer 'i'.
 ** See comments on previous function.
 */
-l_sinline int LEfloatint (hello_Number f, hello_Integer i) {
+l_sinline int LEfloatint (mask_Number f, mask_Integer i) {
   if (l_intfitsf(i))
-    return helloi_numle(f, cast_num(i));  /* compare them as floats */
+    return maski_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */
-    hello_Integer fi;
-    if (helloV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
+    mask_Integer fi;
+    if (maskV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
       return fi <= i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */
@@ -488,18 +488,18 @@ l_sinline int LEfloatint (hello_Number f, hello_Integer i) {
 ** Return 'l < r', for numbers.
 */
 l_sinline int LTnum (const TValue *l, const TValue *r) {
-  hello_assert(ttisnumber(l) && ttisnumber(r));
+  mask_assert(ttisnumber(l) && ttisnumber(r));
   if (ttisinteger(l)) {
-    hello_Integer li = ivalue(l);
+    mask_Integer li = ivalue(l);
     if (ttisinteger(r))
       return li < ivalue(r);  /* both are integers */
     else  /* 'l' is int and 'r' is float */
       return LTintfloat(li, fltvalue(r));  /* l < r ? */
   }
   else {
-    hello_Number lf = fltvalue(l);  /* 'l' must be float */
+    mask_Number lf = fltvalue(l);  /* 'l' must be float */
     if (ttisfloat(r))
-      return helloi_numlt(lf, fltvalue(r));  /* both are float */
+      return maski_numlt(lf, fltvalue(r));  /* both are float */
     else  /* 'l' is float and 'r' is int */
       return LTfloatint(lf, ivalue(r));
   }
@@ -510,18 +510,18 @@ l_sinline int LTnum (const TValue *l, const TValue *r) {
 ** Return 'l <= r', for numbers.
 */
 l_sinline int LEnum (const TValue *l, const TValue *r) {
-  hello_assert(ttisnumber(l) && ttisnumber(r));
+  mask_assert(ttisnumber(l) && ttisnumber(r));
   if (ttisinteger(l)) {
-    hello_Integer li = ivalue(l);
+    mask_Integer li = ivalue(l);
     if (ttisinteger(r))
       return li <= ivalue(r);  /* both are integers */
     else  /* 'l' is int and 'r' is float */
       return LEintfloat(li, fltvalue(r));  /* l <= r ? */
   }
   else {
-    hello_Number lf = fltvalue(l);  /* 'l' must be float */
+    mask_Number lf = fltvalue(l);  /* 'l' must be float */
     if (ttisfloat(r))
-      return helloi_numle(lf, fltvalue(r));  /* both are float */
+      return maski_numle(lf, fltvalue(r));  /* both are float */
     else  /* 'l' is float and 'r' is int */
       return LEfloatint(lf, ivalue(r));
   }
@@ -531,19 +531,19 @@ l_sinline int LEnum (const TValue *l, const TValue *r) {
 /*
 ** return 'l < r' for non-numbers.
 */
-static int lessthanothers (hello_State *L, const TValue *l, const TValue *r) {
-  hello_assert(!ttisnumber(l) || !ttisnumber(r));
+static int lessthanothers (mask_State *L, const TValue *l, const TValue *r) {
+  mask_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return l_strcmp(tsvalue(l), tsvalue(r)) < 0;
   else
-    return helloT_callorderTM(L, l, r, TM_LT);
+    return maskT_callorderTM(L, l, r, TM_LT);
 }
 
 
 /*
 ** Main operation less than; return 'l < r'.
 */
-int helloV_lessthan (hello_State *L, const TValue *l, const TValue *r) {
+int maskV_lessthan (mask_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return LTnum(l, r);
   else return lessthanothers(L, l, r);
@@ -553,19 +553,19 @@ int helloV_lessthan (hello_State *L, const TValue *l, const TValue *r) {
 /*
 ** return 'l <= r' for non-numbers.
 */
-static int lessequalothers (hello_State *L, const TValue *l, const TValue *r) {
-  hello_assert(!ttisnumber(l) || !ttisnumber(r));
+static int lessequalothers (mask_State *L, const TValue *l, const TValue *r) {
+  mask_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return l_strcmp(tsvalue(l), tsvalue(r)) <= 0;
   else
-    return helloT_callorderTM(L, l, r, TM_LE);
+    return maskT_callorderTM(L, l, r, TM_LE);
 }
 
 
 /*
 ** Main operation less than or equal to; return 'l <= r'.
 */
-int helloV_lessequal (hello_State *L, const TValue *l, const TValue *r) {
+int maskV_lessequal (mask_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return LEnum(l, r);
   else return lessequalothers(L, l, r);
@@ -573,34 +573,34 @@ int helloV_lessequal (hello_State *L, const TValue *l, const TValue *r) {
 
 
 /*
-** Main operation for equality of Hello values; return 't1 == t2'.
+** Main operation for equality of Mask values; return 't1 == t2'.
 ** L == NULL means raw equality (no metamethods)
 */
-int helloV_equalobj (hello_State *L, const TValue *t1, const TValue *t2) {
+int maskV_equalobj (mask_State *L, const TValue *t1, const TValue *t2) {
   const TValue *tm;
   if (ttypetag(t1) != ttypetag(t2)) {  /* not the same variant? */
-    if (ttype(t1) != ttype(t2) || ttype(t1) != HELLO_TNUMBER)
+    if (ttype(t1) != ttype(t2) || ttype(t1) != MASK_TNUMBER)
       return 0;  /* only numbers can be equal with different variants */
     else {  /* two numbers with different variants */
       /* One of them is an integer. If the other does not have an
          integer value, they cannot be equal; otherwise, compare their
          integer values. */
-      hello_Integer i1, i2;
-      return (helloV_tointegerns(t1, &i1, F2Ieq) &&
-              helloV_tointegerns(t2, &i2, F2Ieq) &&
+      mask_Integer i1, i2;
+      return (maskV_tointegerns(t1, &i1, F2Ieq) &&
+              maskV_tointegerns(t2, &i2, F2Ieq) &&
               i1 == i2);
     }
   }
   /* values have same type and same variant */
   switch (ttypetag(t1)) {
-    case HELLO_VNIL: case HELLO_VFALSE: case HELLO_VTRUE: return 1;
-    case HELLO_VNUMINT: return (ivalue(t1) == ivalue(t2));
-    case HELLO_VNUMFLT: return helloi_numeq(fltvalue(t1), fltvalue(t2));
-    case HELLO_VLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
-    case HELLO_VLCF: return fvalue(t1) == fvalue(t2);
-    case HELLO_VSHRSTR: return eqshrstr(tsvalue(t1), tsvalue(t2));
-    case HELLO_VLNGSTR: return helloS_eqlngstr(tsvalue(t1), tsvalue(t2));
-    case HELLO_VUSERDATA: {
+    case MASK_VNIL: case MASK_VFALSE: case MASK_VTRUE: return 1;
+    case MASK_VNUMINT: return (ivalue(t1) == ivalue(t2));
+    case MASK_VNUMFLT: return maski_numeq(fltvalue(t1), fltvalue(t2));
+    case MASK_VLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
+    case MASK_VLCF: return fvalue(t1) == fvalue(t2);
+    case MASK_VSHRSTR: return eqshrstr(tsvalue(t1), tsvalue(t2));
+    case MASK_VLNGSTR: return maskS_eqlngstr(tsvalue(t1), tsvalue(t2));
+    case MASK_VUSERDATA: {
       if (uvalue(t1) == uvalue(t2)) return 1;
       else if (L == NULL) return 0;
       tm = fasttm(L, uvalue(t1)->metatable, TM_EQ);
@@ -608,7 +608,7 @@ int helloV_equalobj (hello_State *L, const TValue *t1, const TValue *t2) {
         tm = fasttm(L, uvalue(t2)->metatable, TM_EQ);
       break;  /* will try TM */
     }
-    case HELLO_VTABLE: {
+    case MASK_VTABLE: {
       if (hvalue(t1) == hvalue(t2)) return 1;
       else if (L == NULL) return 0;
       tm = fasttm(L, hvalue(t1)->metatable, TM_EQ);
@@ -622,15 +622,15 @@ int helloV_equalobj (hello_State *L, const TValue *t1, const TValue *t2) {
   if (tm == NULL)  /* no TM? */
     return 0;  /* objects are different */
   else {
-    helloT_callTMres(L, tm, t1, t2, L->top);  /* call TM */
+    maskT_callTMres(L, tm, t1, t2, L->top);  /* call TM */
     return !l_isfalse(s2v(L->top));
   }
 }
 
 
-/* macro used by 'helloV_concat' to ensure that element at 'o' is a string */
+/* macro used by 'maskV_concat' to ensure that element at 'o' is a string */
 #define tostring(L,o)  \
-    (ttisstring(o) || (cvt2str(o) && (helloO_tostring(L, o), 1)))
+    (ttisstring(o) || (cvt2str(o) && (maskO_tostring(L, o), 1)))
 
 #define isemptystr(o)	(ttisshrstring(o) && tsvalue(o)->shrlen == 0)
 
@@ -649,7 +649,7 @@ static void copy2buff (StkId top, int n, char *buff) {
 ** Main operation for concatenation: concat 'total' values in the stack,
 ** from 'L->top - total' up to 'L->top - 1'.
 */
-void helloV_concat (hello_State *L, int total) {
+void maskV_concat (mask_State *L, int total) {
   if (total == 1)
     return;  /* "all" values already concatenated */
   do {
@@ -657,7 +657,7 @@ void helloV_concat (hello_State *L, int total) {
     int n = 2;  /* number of elements handled in this pass (at least 2) */
     if (!(ttisstring(s2v(top - 2)) || cvt2str(s2v(top - 2))) ||
         !tostring(L, s2v(top - 1)))
-      helloT_tryconcatTM(L);
+      maskT_tryconcatTM(L);
     else if (isemptystr(s2v(top - 1)))  /* second operand is empty? */
       cast_void(tostring(L, s2v(top - 2)));  /* result is first operand */
     else if (isemptystr(s2v(top - 2))) {  /* first operand is empty string? */
@@ -671,16 +671,16 @@ void helloV_concat (hello_State *L, int total) {
       for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
         size_t l = vslen(s2v(top - n - 1));
         if (l_unlikely(l >= (MAX_SIZE/sizeof(char)) - tl))
-          helloG_runerror(L, "string length overflow");
+          maskG_runerror(L, "string length overflow");
         tl += l;
       }
-      if (tl <= HELLOI_MAXSHORTLEN) {  /* is result a short string? */
-        char buff[HELLOI_MAXSHORTLEN];
+      if (tl <= MASKI_MAXSHORTLEN) {  /* is result a short string? */
+        char buff[MASKI_MAXSHORTLEN];
         copy2buff(top, n, buff);  /* copy strings to buffer */
-        ts = helloS_newlstr(L, buff, tl);
+        ts = maskS_newlstr(L, buff, tl);
       }
       else {  /* long string; copy strings directly to final result */
-        ts = helloS_createlngstrobj(L, tl);
+        ts = maskS_createlngstrobj(L, tl);
         copy2buff(top, n, getstr(ts));
       }
       setsvalue2s(L, top - n, ts);  /* create result */
@@ -694,33 +694,33 @@ void helloV_concat (hello_State *L, int total) {
 /*
 ** Main operation 'ra = #rb'.
 */
-void helloV_objlen (hello_State *L, StkId ra, const TValue *rb) {
+void maskV_objlen (mask_State *L, StkId ra, const TValue *rb) {
   const TValue *tm;
   switch (ttypetag(rb)) {
-    case HELLO_VTABLE: {
+    case MASK_VTABLE: {
       Table *h = hvalue(rb);
       tm = fasttm(L, h->metatable, TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
-      if (!h->length) h->length = helloH_getn(h);  /* cache length */
+      if (!h->length) h->length = maskH_getn(h);  /* cache length */
       setivalue(s2v(ra), h->length);
       return;
     }
-    case HELLO_VSHRSTR: {
+    case MASK_VSHRSTR: {
       setivalue(s2v(ra), tsvalue(rb)->shrlen);
       return;
     }
-    case HELLO_VLNGSTR: {
+    case MASK_VLNGSTR: {
       setivalue(s2v(ra), tsvalue(rb)->u.lnglen);
       return;
     }
     default: {  /* try metamethod */
-      tm = helloT_gettmbyobj(L, rb, TM_LEN);
+      tm = maskT_gettmbyobj(L, rb, TM_LEN);
       if (l_unlikely(notm(tm)))  /* no metamethod? */
-        helloG_typeerror(L, rb, "get length of");
+        maskG_typeerror(L, rb, "get length of");
       break;
     }
   }
-  helloT_callTMres(L, tm, rb, rb, ra);
+  maskT_callTMres(L, tm, rb, rb, ra);
 }
 
 
@@ -730,14 +730,14 @@ void helloV_objlen (hello_State *L, StkId ra, const TValue *rb) {
 ** 'floor(q) == trunc(q)' when 'q >= 0' or when 'q' is integer,
 ** otherwise 'floor(q) == trunc(q) - 1'.
 */
-hello_Integer helloV_idiv (hello_State *L, hello_Integer m, hello_Integer n) {
+mask_Integer maskV_idiv (mask_State *L, mask_Integer m, mask_Integer n) {
   if (l_unlikely(l_castS2U(n) + 1u <= 1u)) {  /* special cases: -1 or 0 */
     if (n == 0)
-      helloG_runerror(L, "attempt to divide by zero");
+      maskG_runerror(L, "attempt to divide by zero");
     return intop(-, 0, m);   /* n==-1; avoid overflow with 0x80000...//-1 */
   }
   else {
-    hello_Integer q = m / n;  /* perform C division */
+    mask_Integer q = m / n;  /* perform C division */
     if ((m ^ n) < 0 && m % n != 0)  /* 'm/n' would be negative non-integer? */
       q -= 1;  /* correct result for different rounding */
     return q;
@@ -748,16 +748,16 @@ hello_Integer helloV_idiv (hello_State *L, hello_Integer m, hello_Integer n) {
 /*
 ** Integer modulus; return 'm % n'. (Assume that C '%' with
 ** negative operands follows C99 behavior. See previous comment
-** about helloV_idiv.)
+** about maskV_idiv.)
 */
-hello_Integer helloV_mod (hello_State *L, hello_Integer m, hello_Integer n) {
+mask_Integer maskV_mod (mask_State *L, mask_Integer m, mask_Integer n) {
   if (l_unlikely(l_castS2U(n) + 1u <= 1u)) {  /* special cases: -1 or 0 */
     if (n == 0)
-      helloG_runerror(L, "attempt to perform 'n%%0'");
+      maskG_runerror(L, "attempt to perform 'n%%0'");
     return 0;   /* m % -1 == 0; avoid overflow with 0x80000...%-1 */
   }
   else {
-    hello_Integer r = m % n;
+    mask_Integer r = m % n;
     if (r != 0 && (r ^ n) < 0)  /* 'm/n' would be non-integer negative? */
       r += n;  /* correct result for different rounding */
     return r;
@@ -768,21 +768,21 @@ hello_Integer helloV_mod (hello_State *L, hello_Integer m, hello_Integer n) {
 /*
 ** Float modulus
 */
-hello_Number helloV_modf (hello_State *L, hello_Number m, hello_Number n) {
-  hello_Number r;
-  helloi_nummod(L, m, n, r);
+mask_Number maskV_modf (mask_State *L, mask_Number m, mask_Number n) {
+  mask_Number r;
+  maski_nummod(L, m, n, r);
   return r;
 }
 
 
 /* number of bits in an integer */
-#define NBITS	cast_int(sizeof(hello_Integer) * CHAR_BIT)
+#define NBITS	cast_int(sizeof(mask_Integer) * CHAR_BIT)
 
 
 /*
 ** Shift left operation. (Shift right just negates 'y'.)
 */
-hello_Integer helloV_shiftl (hello_Integer x, hello_Integer y) {
+mask_Integer maskV_shiftl (mask_Integer x, mask_Integer y) {
   if (y < 0) {  /* shift right? */
     if (y <= -NBITS) return 0;
     else return intop(>>, x, -y);
@@ -795,23 +795,23 @@ hello_Integer helloV_shiftl (hello_Integer x, hello_Integer y) {
 
 
 /*
-** create a new Hello closure, push it in the stack, and initialize
+** create a new Mask closure, push it in the stack, and initialize
 ** its upvalues.
 */
-static void pushclosure (hello_State *L, Proto *p, UpVal **encup, StkId base,
+static void pushclosure (mask_State *L, Proto *p, UpVal **encup, StkId base,
                          StkId ra) {
   int nup = p->sizeupvalues;
   Upvaldesc *uv = p->upvalues;
   int i;
-  LClosure *ncl = helloF_newLclosure(L, nup);
+  LClosure *ncl = maskF_newLclosure(L, nup);
   ncl->p = p;
   setclLvalue2s(L, ra, ncl);  /* anchor new closure in stack */
   for (i = 0; i < nup; i++) {  /* fill in its upvalues */
     if (uv[i].instack)  /* upvalue refers to local variable? */
-      ncl->upvals[i] = helloF_findupval(L, base + uv[i].idx);
+      ncl->upvals[i] = maskF_findupval(L, base + uv[i].idx);
     else  /* get upvalue from enclosing function */
       ncl->upvals[i] = encup[uv[i].idx];
-    helloC_objbarrier(L, ncl, ncl->upvals[i]);
+    maskC_objbarrier(L, ncl, ncl->upvals[i]);
   }
 }
 
@@ -819,7 +819,7 @@ static void pushclosure (hello_State *L, Proto *p, UpVal **encup, StkId base,
 /*
 ** finish execution of an opcode interrupted by a yield
 */
-void helloV_finishOp (hello_State *L) {
+void maskV_finishOp (mask_State *L) {
   CallInfo *ci = L->ci;
   StkId base = ci->func + 1;
   Instruction inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
@@ -841,24 +841,24 @@ void helloV_finishOp (hello_State *L) {
     case OP_EQ: {  /* note that 'OP_EQI'/'OP_EQK' cannot yield */
       int res = !l_isfalse(s2v(L->top - 1));
       L->top--;
-#if defined(HELLO_COMPAT_LT_LE)
+#if defined(MASK_COMPAT_LT_LE)
       if (ci->callstatus & CIST_LEQ) {  /* "<=" using "<" instead? */
         ci->callstatus ^= CIST_LEQ;  /* clear mark */
         res = !res;  /* negate result */
       }
 #endif
-      hello_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_JMP);
+      mask_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_JMP);
       if (res != GETARG_k(inst))  /* condition failed? */
         ci->u.l.savedpc++;  /* skip jump instruction */
       break;
     }
     case OP_CONCAT: {
-      StkId top = L->top - 1;  /* top when 'helloT_tryconcatTM' was called */
+      StkId top = L->top - 1;  /* top when 'maskT_tryconcatTM' was called */
       int a = GETARG_A(inst);      /* first element to concatenate */
       int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
       setobjs2s(L, top - 2, top);  /* put TM result in proper position */
       L->top = top - 1;  /* top is one after last element (at top-2) */
-      helloV_concat(L, total);  /* concat them (may yield again) */
+      maskV_concat(L, total);  /* concat them (may yield again) */
       break;
     }
     case OP_CLOSE: {  /* yielded closing variables */
@@ -876,7 +876,7 @@ void helloV_finishOp (hello_State *L) {
     }
     default: {
       /* only these other opcodes can yield */
-      hello_assert(op == OP_TFORCALL || op == OP_CALL ||
+      mask_assert(op == OP_TFORCALL || op == OP_CALL ||
            op == OP_TAILCALL || op == OP_SETTABUP || op == OP_SETTABLE ||
            op == OP_SETI || op == OP_SETFIELD);
       break;
@@ -889,7 +889,7 @@ void helloV_finishOp (hello_State *L) {
 
 /*
 ** {==================================================================
-** Macros for arithmetic/bitwise/comparison opcodes in 'helloV_execute'
+** Macros for arithmetic/bitwise/comparison opcodes in 'maskV_execute'
 ** ===================================================================
 */
 
@@ -915,12 +915,12 @@ void helloV_finishOp (hello_State *L) {
   TValue *v1 = vRB(i);  \
   int imm = GETARG_sC(i);  \
   if (ttisinteger(v1)) {  \
-    hello_Integer iv1 = ivalue(v1);  \
+    mask_Integer iv1 = ivalue(v1);  \
     pc++; setivalue(s2v(ra), iop(L, iv1, imm));  \
   }  \
   else if (ttisfloat(v1)) {  \
-    hello_Number nb = fltvalue(v1);  \
-    hello_Number fimm = cast_num(imm);  \
+    mask_Number nb = fltvalue(v1);  \
+    mask_Number fimm = cast_num(imm);  \
     pc++; setfltvalue(s2v(ra), fop(L, nb, fimm)); \
   }}
 
@@ -930,7 +930,7 @@ void helloV_finishOp (hello_State *L) {
 ** with two register operands.
 */
 #define op_arithf_aux(L,v1,v2,fop) {  \
-  hello_Number n1; hello_Number n2;  \
+  mask_Number n1; mask_Number n2;  \
   if (tonumberns(v1, n1) && tonumberns(v2, n2)) {  \
     pc++; setfltvalue(s2v(ra), fop(L, n1, n2));  \
   }}
@@ -952,7 +952,7 @@ void helloV_finishOp (hello_State *L) {
 #define op_arithfK(L,fop) {  \
   savepc(L);  \
   TValue *v1 = vRB(i);  \
-  TValue *v2 = KC(i); hello_assert(ttisnumber(v2));  \
+  TValue *v2 = KC(i); mask_assert(ttisnumber(v2));  \
   op_arithf_aux(L, v1, v2, fop); }
 
 
@@ -961,7 +961,7 @@ void helloV_finishOp (hello_State *L) {
 */
 #define op_arith_aux(L,v1,v2,iop,fop) {  \
   if (ttisinteger(v1) && ttisinteger(v2)) {  \
-    hello_Integer i1 = ivalue(v1); hello_Integer i2 = ivalue(v2);  \
+    mask_Integer i1 = ivalue(v1); mask_Integer i2 = ivalue(v2);  \
     pc++; setivalue(s2v(ra), iop(L, i1, i2));  \
   }  \
   else op_arithf_aux(L, v1, v2, fop); }
@@ -983,7 +983,7 @@ void helloV_finishOp (hello_State *L) {
 #define op_arithK(L,iop,fop) {  \
   savepc(L);  \
   TValue *v1 = vRB(i);  \
-  TValue *v2 = KC(i); hello_assert(ttisnumber(v2));  \
+  TValue *v2 = KC(i); mask_assert(ttisnumber(v2));  \
   op_arith_aux(L, v1, v2, iop, fop); }
 
 
@@ -994,8 +994,8 @@ void helloV_finishOp (hello_State *L) {
   savepc(L);  \
   TValue *v1 = vRB(i);  \
   TValue *v2 = KC(i);  \
-  hello_Integer i1;  \
-  hello_Integer i2 = ivalue(v2);  \
+  mask_Integer i1;  \
+  mask_Integer i2 = ivalue(v2);  \
   if (tointegerns(v1, &i1)) {  \
     pc++; setivalue(s2v(ra), op(i1, i2));  \
   }}
@@ -1008,7 +1008,7 @@ void helloV_finishOp (hello_State *L) {
   savepc(L);  \
   TValue *v1 = vRB(i);  \
   TValue *v2 = vRC(i);  \
-  hello_Integer i1; hello_Integer i2;  \
+  mask_Integer i1; mask_Integer i2;  \
   if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {  \
     pc++; setivalue(s2v(ra), op(i1, i2));  \
   }}
@@ -1023,8 +1023,8 @@ void helloV_finishOp (hello_State *L) {
         int cond;  \
         TValue *rb = vRB(i);  \
         if (ttisinteger(s2v(ra)) && ttisinteger(rb)) {  \
-          hello_Integer ia = ivalue(s2v(ra));  \
-          hello_Integer ib = ivalue(rb);  \
+          mask_Integer ia = ivalue(s2v(ra));  \
+          mask_Integer ib = ivalue(rb);  \
           cond = opi(ia, ib);  \
         }  \
         else if (ttisnumber(s2v(ra)) && ttisnumber(rb))  \
@@ -1044,13 +1044,13 @@ void helloV_finishOp (hello_State *L) {
         if (ttisinteger(s2v(ra)))  \
           cond = opi(ivalue(s2v(ra)), im);  \
         else if (ttisfloat(s2v(ra))) {  \
-          hello_Number fa = fltvalue(s2v(ra));  \
-          hello_Number fim = cast_num(im);  \
+          mask_Number fa = fltvalue(s2v(ra));  \
+          mask_Number fim = cast_num(im);  \
           cond = opf(fa, fim);  \
         }  \
         else {  \
           int isf = GETARG_C(i);  \
-          Protect(cond = helloT_callorderiTM(L, s2v(ra), im, inv, isf, tm));  \
+          Protect(cond = maskT_callorderiTM(L, s2v(ra), im, inv, isf, tm));  \
         }  \
         docondjump(); }
 
@@ -1059,12 +1059,12 @@ void helloV_finishOp (hello_State *L) {
 
 /*
 ** {==================================================================
-** Function 'helloV_execute': main interpreter loop
+** Function 'maskV_execute': main interpreter loop
 ** ===================================================================
 */
 
 /*
-** some macros for common tasks in 'helloV_execute'
+** some macros for common tasks in 'maskV_execute'
 */
 
 
@@ -1136,15 +1136,15 @@ void helloV_finishOp (hello_State *L) {
 
 /* 'c' is the limit of live values in the stack */
 #define checkGC(L,c)  \
-    { helloC_condGC(L, (savepc(L), L->top = (c)), \
+    { maskC_condGC(L, (savepc(L), L->top = (c)), \
                          updatetrap(ci)); \
-           helloi_threadyield(L); }
+           maski_threadyield(L); }
 
 
 /* fetch an instruction and prepare its execution */
 #define vmfetch()	{ \
   if (l_unlikely(trap)) {  /* stack reallocation or hooks? */ \
-    trap = helloG_traceexec(L, pc);  /* handle hooks */ \
+    trap = maskG_traceexec(L, pc);  /* handle hooks */ \
     updatebase(ci);  /* correct stack */ \
   } \
   i = *(pc++); \
@@ -1173,11 +1173,11 @@ void helloV_finishOp (hello_State *L) {
 ** Speed-ups upwards of 5x have been observed on my machine.
 ** Furthermore, this optimzation is safe. It only occurs when the TBC variable is ignored.
 */
-HELLOI_FUNC int helloB_next (hello_State *L);
-HELLOI_FUNC int helloB_ipairsaux (hello_State *L);
+MASKI_FUNC int maskB_next (mask_State *L);
+MASKI_FUNC int maskB_ipairsaux (mask_State *L);
 
 
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
 #include <vector>
 
 [[nodiscard]] static std::string stringify_ttype(const TValue* t) noexcept
@@ -1186,31 +1186,31 @@ HELLOI_FUNC int helloB_ipairsaux (hello_State *L);
 
   switch (ttype(t))
   {
-    case HELLO_TNIL:
+    case MASK_TNIL:
       str << "nil";
       break;
-    case HELLO_TBOOLEAN: 
+    case MASK_TBOOLEAN: 
       str << "boolean";
       break;
-    case HELLO_TLIGHTUSERDATA: 
+    case MASK_TLIGHTUSERDATA: 
       str << "lightuserdata";
       break;
-    case HELLO_TNUMBER:
+    case MASK_TNUMBER:
       str << "number";
       break;
-    case HELLO_TSTRING:
+    case MASK_TSTRING:
       str << "string";
       break;
-    case HELLO_TTABLE:
+    case MASK_TTABLE:
       str << "table";
       break;
-    case HELLO_TFUNCTION:
+    case MASK_TFUNCTION:
       str << "function";
       break;
-    case HELLO_TUSERDATA:
+    case MASK_TUSERDATA:
       str << "userdata";
       break;
-    case HELLO_TTHREAD:
+    case MASK_TTHREAD:
       str << "thread";
       break;
     default:
@@ -1236,18 +1236,18 @@ inline void padUntilGoal(std::string& s, const size_t goal) noexcept
 
   switch (ttype(o))
   {
-    case HELLO_TSTRING:
+    case MASK_TSTRING:
       str.push_back('"');
       str.append(svalue(o));
       str.push_back('"');
       break;
-    case HELLO_TNUMBER:
+    case MASK_TNUMBER:
       if (ttisinteger(o))
         str += std::to_string(ivalue(o));
       else
         str += std::to_string(nvalue(o));
       break;
-    case HELLO_TBOOLEAN:
+    case MASK_TBOOLEAN:
       str += ttistrue(o) ? "true" : "false";
       break;
     default:
@@ -1257,11 +1257,11 @@ inline void padUntilGoal(std::string& s, const size_t goal) noexcept
   return str;
 }
 
-// The compiler didn't like including 'lopcodes.h' in 'helloconf.h'.
+// The compiler didn't like including 'lopcodes.h' in 'maskconf.h'.
 static const std::vector<OpCode> ignoreOps = { vmDumpIgnore };
 static const std::vector<OpCode> allowOps = { vmDumpAllow };
 
-#ifdef HELLO_VMDUMP_WHITELIST
+#ifdef MASK_VMDUMP_WHITELIST
 #define vmDumpInit() \
   bool ignore = true; \
   OpCode opcode = GET_OPCODE(i); \
@@ -1282,7 +1282,7 @@ static const std::vector<OpCode> allowOps = { vmDumpAllow };
 #define vmDumpAddB() if (!ignore) { tmp += std::to_string(GETARG_B(i)); tmp += " "; }
 #define vmDumpAddC() if (!ignore) { tmp += std::to_string(GETARG_C(i)); tmp += " "; }
 #define vmDumpAdd(o) if (!ignore) { tmp += std::to_string(o);           tmp += " "; }
-#define vmDumpOut(c) if (!ignore) { padUntilGoal(tmp, 20); std::stringstream cs; cs << c; tmp.append(cs.str()); hello_writestring(tmp.data(), tmp.size()); hello_writeline(); }
+#define vmDumpOut(c) if (!ignore) { padUntilGoal(tmp, 20); std::stringstream cs; cs << c; tmp.append(cs.str()); mask_writestring(tmp.data(), tmp.size()); mask_writeline(); }
 #else
 #define vmDumpInit()
 #define vmDumpAddA()
@@ -1290,25 +1290,25 @@ static const std::vector<OpCode> allowOps = { vmDumpAllow };
 #define vmDumpAddC()
 #define vmDumpAdd(o)
 #define vmDumpOut(c)
-#endif  /* HELLO_VMDUMP */
+#endif  /* MASK_VMDUMP */
 
 
-#if !defined(__GNUC__) && defined(HELLO_FORCE_JUMPTABLE)
+#if !defined(__GNUC__) && defined(MASK_FORCE_JUMPTABLE)
 #include "ljumptab.h"
 #endif
 
-void helloV_execute (hello_State *L, CallInfo *ci) {
+void maskV_execute (mask_State *L, CallInfo *ci) {
   LClosure *cl;
   TValue *k;
   StkId base;
   const Instruction *pc;
   int trap;
-#ifdef HELLO_ILP_ENABLE
+#ifdef MASK_ILP_ENABLE
   int sequentialJumps = 0;
 #endif
-#ifdef HELLO_ETL_ENABLE
+#ifdef MASK_ETL_ENABLE
   std::time_t deadline = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()
-                         + HELLO_ETL_NANOS;
+                         + MASK_ETL_NANOS;
 #endif
 #if defined(__GNUC__)
 #include "ljumptabgcc.h"
@@ -1324,7 +1324,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       if (cl->p->is_vararg)
         trap = 0;  /* hooks will start after VARARGPREP instruction */
       else  /* check 'call' hook */
-        helloD_hookcall(L, ci);
+        maskD_hookcall(L, ci);
     }
     ci->u.l.trap = 1;  /* assume trap is on, for now */
   }
@@ -1334,7 +1334,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
     Instruction i;  /* instruction being executed */
     StkId ra;  /* instruction's A register */
     vmfetch();
-    hello_assert(isIT(i) || (cast_void(L->top = base), 1));
+    mask_assert(isIT(i) || (cast_void(L->top = base), 1));
     vmdispatch (GET_OPCODE(i)) {
       vmcase(OP_MOVE) {
         setobjs2s(L, ra, RB(i));
@@ -1345,7 +1345,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LOADI) {
-        hello_Integer b = GETARG_sBx(i);
+        mask_Integer b = GETARG_sBx(i);
         setivalue(s2v(ra), b);
         vmDumpInit();
         vmDumpAddA();
@@ -1429,7 +1429,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpOut ("; old=" << stringify_tvalue(uv->v) << " new=" << stringify_tvalue(s2v(ra)));
         setobj(L, uv->v, s2v(ra));
-        helloC_barrier(L, uv, s2v(ra));
+        maskC_barrier(L, uv, s2v(ra));
         vmbreak;
       }
       vmcase(OP_GETTABUP) {
@@ -1437,11 +1437,11 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TValue *upval = cl->upvals[GETARG_B(i)]->v;
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a string */
-        if (helloV_fastget(L, upval, key, slot, helloH_getshortstr)) {
+        if (maskV_fastget(L, upval, key, slot, maskH_getshortstr)) {
           setobj2s(L, ra, slot);
         }
         else
-          Protect(helloV_finishget(L, upval, rc, ra, slot));
+          Protect(maskV_finishget(L, upval, rc, ra, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1453,14 +1453,14 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         const TValue *slot;
         TValue *rb = vRB(i);
         TValue *rc = vRC(i);
-        hello_Unsigned n;
+        mask_Unsigned n;
         if (ttisinteger(rc)  /* fast track for integers? */
-            ? (cast_void(n = ivalue(rc)), helloV_fastgeti(L, rb, n, slot))
-            : helloV_fastget(L, rb, rc, slot, helloH_get)) {
+            ? (cast_void(n = ivalue(rc)), maskV_fastgeti(L, rb, n, slot))
+            : maskV_fastget(L, rb, rc, slot, maskH_get)) {
           setobj2s(L, ra, slot);
         }
         else
-          Protect(helloV_finishget(L, rb, rc, ra, slot));
+          Protect(maskV_finishget(L, rb, rc, ra, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1472,13 +1472,13 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         const TValue *slot;
         TValue *rb = vRB(i);
         int c = GETARG_C(i);
-        if (helloV_fastgeti(L, rb, c, slot)) {
+        if (maskV_fastgeti(L, rb, c, slot)) {
           setobj2s(L, ra, slot);
         }
         else {
           TValue key;
           setivalue(&key, c);
-          Protect(helloV_finishget(L, rb, &key, ra, slot));
+          Protect(maskV_finishget(L, rb, &key, ra, slot));
         }
         vmDumpInit();
         vmDumpAddA();
@@ -1492,11 +1492,11 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a string */
-        if (helloV_fastget(L, rb, key, slot, helloH_getshortstr)) {
+        if (maskV_fastget(L, rb, key, slot, maskH_getshortstr)) {
           setobj2s(L, ra, slot);
         }
         else
-          Protect(helloV_finishget(L, rb, rc, ra, slot));
+          Protect(maskV_finishget(L, rb, rc, ra, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1515,14 +1515,14 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
           t->length = 0;
           if (t->isfrozen) {
             savepc(L);
-            helloG_runerror(L, "attempt to modify frozen table.");
+            maskG_runerror(L, "attempt to modify frozen table.");
           }
         }
-        if (helloV_fastget(L, upval, key, slot, helloH_getshortstr)) {
-          helloV_finishfastset(L, upval, slot, rc);
+        if (maskV_fastget(L, upval, key, slot, maskH_getshortstr)) {
+          maskV_finishfastset(L, upval, slot, rc);
         }
         else {
-          Protect(helloV_finishset(L, upval, rb, rc, slot));
+          Protect(maskV_finishset(L, upval, rb, rc, slot));
         }
         vmDumpInit();
         vmDumpAddA();
@@ -1535,22 +1535,22 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         const TValue *slot;
         TValue *rb = vRB(i);  /* key (table is in 'ra') */
         TValue *rc = RKC(i);  /* value */
-        hello_Unsigned n;
+        mask_Unsigned n;
         if (ttistable(s2v(ra))) {
           Table *t = hvalue(s2v(ra));
           t->length = 0; // Reset length cache.
           if (t->isfrozen) {
             savepc(L);
-            helloG_runerror(L, "attempt to modify frozen table.");
+            maskG_runerror(L, "attempt to modify frozen table.");
           }
         }
         if (ttisinteger(rb)  /* fast track for integers? */
-            ? (cast_void(n = ivalue(rb)), helloV_fastgeti(L, s2v(ra), n, slot))
-            : helloV_fastget(L, s2v(ra), rb, slot, helloH_get)) {
-          helloV_finishfastset(L, s2v(ra), slot, rc);
+            ? (cast_void(n = ivalue(rb)), maskV_fastgeti(L, s2v(ra), n, slot))
+            : maskV_fastget(L, s2v(ra), rb, slot, maskH_get)) {
+          maskV_finishfastset(L, s2v(ra), slot, rc);
         }
         else
-          Protect(helloV_finishset(L, s2v(ra), rb, rc, slot));
+          Protect(maskV_finishset(L, s2v(ra), rb, rc, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1566,17 +1566,17 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
           Table *t = hvalue(s2v(ra));
           if (t->isfrozen) {
             savepc(L);
-            helloG_runerror(L, "attempt to modify frozen table.");
+            maskG_runerror(L, "attempt to modify frozen table.");
           }
           t->length = 0; // Reset length cache.
         }
-        if (helloV_fastgeti(L, s2v(ra), c, slot)) {
-          helloV_finishfastset(L, s2v(ra), slot, rc);
+        if (maskV_fastgeti(L, s2v(ra), c, slot)) {
+          maskV_finishfastset(L, s2v(ra), slot, rc);
         }
         else {
           TValue key;
           setivalue(&key, c);
-          Protect(helloV_finishset(L, s2v(ra), &key, rc, slot));
+          Protect(maskV_finishset(L, s2v(ra), &key, rc, slot));
         }
         vmDumpInit();
         vmDumpAddA();
@@ -1592,13 +1592,13 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TString *key = tsvalue(rb);  /* key must be a string */
         if (ttistable(s2v(ra)) && hvalue(s2v(ra))->isfrozen) {
           savepc(L);
-          helloG_runerror(L, "attempt to modify frozen table.");
+          maskG_runerror(L, "attempt to modify frozen table.");
         }
-        if (helloV_fastget(L, s2v(ra), key, slot, helloH_getshortstr)) {
-          helloV_finishfastset(L, s2v(ra), slot, rc);
+        if (maskV_fastget(L, s2v(ra), key, slot, maskH_getshortstr)) {
+          maskV_finishfastset(L, s2v(ra), slot, rc);
         }
         else
-          Protect(helloV_finishset(L, s2v(ra), rb, rc, slot));
+          Protect(maskV_finishset(L, s2v(ra), rb, rc, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1612,15 +1612,15 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         Table *t;
         if (b > 0)
           b = 1 << (b - 1);  /* size is 2^(b - 1) */
-        hello_assert((!TESTARG_k(i)) == (GETARG_Ax(*pc) == 0));
+        mask_assert((!TESTARG_k(i)) == (GETARG_Ax(*pc) == 0));
         if (TESTARG_k(i))  /* non-zero extra argument? */
           c += GETARG_Ax(*pc) * (MAXARG_C + 1);  /* add it to size */
         pc++;  /* skip extra argument */
         L->top = ra + 1;  /* correct top in case of emergency GC */
-        t = helloH_new(L);  /* memory allocation */
+        t = maskH_new(L);  /* memory allocation */
         sethvalue2s(L, ra, t);
         if (b != 0 || c != 0)
-          helloH_resize(L, t, c, b);  /* idem */
+          maskH_resize(L, t, c, b);  /* idem */
         checkGC(L, ra + 1);
         vmDumpInit();
         vmDumpAddA();
@@ -1635,11 +1635,11 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TValue *rc = RKC(i);
         TString *key = tsvalue(rc);  /* key must be a string */
         setobj2s(L, ra + 1, rb);
-        if (helloV_fastget(L, rb, key, slot, helloH_getstr)) {
+        if (maskV_fastget(L, rb, key, slot, maskH_getstr)) {
           setobj2s(L, ra, slot);
         }
         else
-          Protect(helloV_finishget(L, rb, rc, ra, slot));
+          Protect(maskV_finishget(L, rb, rc, ra, slot));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1652,7 +1652,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddA();
         vmDumpAdd (GETARG_sC(i));
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " + " << GETARG_sC(i));
-        op_arithI(L, l_addi, helloi_numadd);
+        op_arithI(L, l_addi, maski_numadd);
         vmbreak;
       }
       vmcase(OP_ADDK) {
@@ -1661,7 +1661,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " + " << stringify_tvalue(KC(i)));
-        op_arithK(L, l_addi, helloi_numadd);
+        op_arithK(L, l_addi, maski_numadd);
         vmbreak;
       }
       vmcase(OP_SUBK) {
@@ -1670,7 +1670,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " - " << stringify_tvalue(KC(i)));
-        op_arithK(L, l_subi, helloi_numsub);
+        op_arithK(L, l_subi, maski_numsub);
         vmbreak;
       }
       vmcase(OP_MULK) {
@@ -1679,7 +1679,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " * " << stringify_tvalue(KC(i)));
-        op_arithK(L, l_muli, helloi_nummul);
+        op_arithK(L, l_muli, maski_nummul);
         vmbreak;
       }
       vmcase(OP_MODK) {
@@ -1688,7 +1688,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " % " << stringify_tvalue(KC(i)));
-        op_arithK(L, helloV_mod, helloV_modf);
+        op_arithK(L, maskV_mod, maskV_modf);
         vmbreak;
       }
       vmcase(OP_POWK) {
@@ -1697,7 +1697,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " ^ " << stringify_tvalue(KC(i)));
-        op_arithfK(L, helloi_numpow);
+        op_arithfK(L, maski_numpow);
         vmbreak;
       }
       vmcase(OP_DIVK) {
@@ -1706,7 +1706,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " / " << stringify_tvalue(KC(i)));
-        op_arithfK(L, helloi_numdiv);
+        op_arithfK(L, maski_numdiv);
         vmbreak;
       }
       vmcase(OP_IDIVK) {
@@ -1715,7 +1715,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " // " << stringify_tvalue(KC(i)));
-        op_arithK(L, helloV_idiv, helloi_numidiv);
+        op_arithK(L, maskV_idiv, maski_numidiv);
         vmbreak;
       }
       vmcase(OP_BANDK) {
@@ -1753,9 +1753,9 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " >> " << GETARG_sC(i));
         TValue *rb = vRB(i);
         int ic = GETARG_sC(i);
-        hello_Integer ib;
+        mask_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; setivalue(s2v(ra), helloV_shiftl(ib, -ic));
+          pc++; setivalue(s2v(ra), maskV_shiftl(ib, -ic));
         }
         vmbreak;
       }
@@ -1767,9 +1767,9 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpOut ("; push " << GETARG_sC(i) << " << " << stringify_tvalue(vRB(i)));
         TValue *rb = vRB(i);
         int ic = GETARG_sC(i);
-        hello_Integer ib;
+        mask_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; setivalue(s2v(ra), helloV_shiftl(ic, ib));
+          pc++; setivalue(s2v(ra), maskV_shiftl(ic, ib));
         }
         vmbreak;
       }
@@ -1779,7 +1779,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " + " << stringify_tvalue(vRC(i)));
-        op_arith(L, l_addi, helloi_numadd);
+        op_arith(L, l_addi, maski_numadd);
         vmbreak;
       }
       vmcase(OP_SUB) {
@@ -1788,7 +1788,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " - " << stringify_tvalue(vRC(i)));
-        op_arith(L, l_subi, helloi_numsub);
+        op_arith(L, l_subi, maski_numsub);
         vmbreak;
       }
       vmcase(OP_MUL) {
@@ -1797,7 +1797,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " * " << stringify_tvalue(vRC(i)));
-        op_arith(L, l_muli, helloi_nummul);
+        op_arith(L, l_muli, maski_nummul);
         vmbreak;
       }
       vmcase(OP_MOD) {
@@ -1806,7 +1806,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " % " << stringify_tvalue(vRC(i)));
-        op_arith(L, helloV_mod, helloV_modf);
+        op_arith(L, maskV_mod, maskV_modf);
         vmbreak;
       }
       vmcase(OP_POW) {
@@ -1815,7 +1815,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " ^ " << stringify_tvalue(vRC(i)));
-        op_arithf(L, helloi_numpow);
+        op_arithf(L, maski_numpow);
         vmbreak;
       }
       vmcase(OP_DIV) {  /* float division (always with floats) */
@@ -1824,7 +1824,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " / " << stringify_tvalue(vRC(i)));
-        op_arithf(L, helloi_numdiv);
+        op_arithf(L, maski_numdiv);
         vmbreak;
       }
       vmcase(OP_IDIV) {  /* floor division */
@@ -1833,7 +1833,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " // " << stringify_tvalue(vRC(i)));
-        op_arith(L, helloV_idiv, helloi_numidiv);
+        op_arith(L, maskV_idiv, maski_numidiv);
         vmbreak;
       }
       vmcase(OP_BAND) {
@@ -1869,7 +1869,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " >> " << stringify_tvalue(vRC(i)));
-        op_bitwise(L, helloV_shiftr);
+        op_bitwise(L, maskV_shiftr);
         vmbreak;
       }
       vmcase(OP_SHL) {
@@ -1878,7 +1878,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         vmDumpOut ("; push " << stringify_tvalue(vRB(i)) << " << " << stringify_tvalue(vRC(i)));
-        op_bitwise(L, helloV_shiftl);
+        op_bitwise(L, maskV_shiftl);
         vmbreak;
       }
       vmcase(OP_MMBIN) {
@@ -1886,13 +1886,13 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         TMS tm = (TMS)GETARG_C(i);
         StkId result = RA(pi);
-        hello_assert(OP_ADD <= GET_OPCODE(pi) && GET_OPCODE(pi) <= OP_SHR);
-        Protect(helloT_trybinTM(L, s2v(ra), rb, result, tm));
+        mask_assert(OP_ADD <= GET_OPCODE(pi) && GET_OPCODE(pi) <= OP_SHR);
+        Protect(maskT_trybinTM(L, s2v(ra), rb, result, tm));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
         vmDumpAddC();
-        vmDumpOut ("; call " << helloT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << stringify_tvalue(rb));
+        vmDumpOut ("; call " << maskT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << stringify_tvalue(rb));
         vmbreak;
       }
       vmcase(OP_MMBINI) {
@@ -1901,12 +1901,12 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TMS tm = (TMS)GETARG_C(i);
         int flip = GETARG_k(i);
         StkId result = RA(pi);
-        Protect(helloT_trybiniTM(L, s2v(ra), imm, flip, result, tm));
+        Protect(maskT_trybiniTM(L, s2v(ra), imm, flip, result, tm));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
         vmDumpAddC();
-        vmDumpOut ("; call " << helloT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << imm);
+        vmDumpOut ("; call " << maskT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << imm);
         vmbreak;
       }
       vmcase(OP_MMBINK) {
@@ -1915,26 +1915,26 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         TMS tm = (TMS)GETARG_C(i);
         int flip = GETARG_k(i);
         StkId result = RA(pi);
-        Protect(helloT_trybinassocTM(L, s2v(ra), imm, flip, result, tm));
+        Protect(maskT_trybinassocTM(L, s2v(ra), imm, flip, result, tm));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
         vmDumpAddC();
-        vmDumpOut ("; call " << helloT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << stringify_tvalue(KB(i)) << " (k=" << GETARG_k(i) << ")");
+        vmDumpOut ("; call " << maskT_eventname[tm] << " over " << stringify_tvalue(s2v(ra)) << " & " << stringify_tvalue(KB(i)) << " (k=" << GETARG_k(i) << ")");
         vmbreak;
       }
       vmcase(OP_UNM) {
         TValue *rb = vRB(i);
-        hello_Number nb;
+        mask_Number nb;
         if (ttisinteger(rb)) {
-          hello_Integer ib = ivalue(rb);
+          mask_Integer ib = ivalue(rb);
           setivalue(s2v(ra), intop(-, 0, ib));
         }
         else if (tonumberns(rb, nb)) {
-          setfltvalue(s2v(ra), helloi_numunm(L, nb));
+          setfltvalue(s2v(ra), maski_numunm(L, nb));
         }
         else
-          Protect(helloT_trybinTM(L, rb, rb, ra, TM_UNM));
+          Protect(maskT_trybinTM(L, rb, rb, ra, TM_UNM));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1943,12 +1943,12 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       }
       vmcase(OP_BNOT) {
         TValue *rb = vRB(i);
-        hello_Integer ib;
+        mask_Integer ib;
         if (tointegerns(rb, &ib)) {
           setivalue(s2v(ra), intop(^, ~l_castS2U(0), ib));
         }
         else
-          Protect(helloT_trybinTM(L, rb, rb, ra, TM_BNOT));
+          Protect(maskT_trybinTM(L, rb, rb, ra, TM_BNOT));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1968,7 +1968,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LEN) {
-        Protect(helloV_objlen(L, ra, vRB(i)));
+        Protect(maskV_objlen(L, ra, vRB(i)));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1978,8 +1978,8 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       vmcase(OP_CONCAT) {
         int n = GETARG_B(i);  /* number of elements to concatenate */
         L->top = ra + n;  /* mark the end of concat operands */
-        ProtectNT(helloV_concat(L, n));
-        checkGC(L, L->top); /* 'helloV_concat' ensures correct top */
+        ProtectNT(maskV_concat(L, n));
+        checkGC(L, L->top); /* 'maskV_concat' ensures correct top */
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -1990,12 +1990,12 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpInit();
         vmDumpAddA();
         vmDumpOut ("; close all upvalues with an ID >= " << ivalue(s2v(ra)));
-        Protect(helloF_close(L, ra, HELLO_OK, 1));
+        Protect(maskF_close(L, ra, MASK_OK, 1));
         vmbreak;
       }
       vmcase(OP_TBC) {
         /* create new to-be-closed upvalue */
-        halfProtect(helloF_newtbcupval(L, ra));
+        halfProtect(maskF_newtbcupval(L, ra));
         vmDumpInit();
         vmDumpAddA();
         vmDumpOut ("; turn R(A) into a TBC upvalue");
@@ -2003,19 +2003,19 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       }
       vmcase(OP_JMP) {
         int offset = GETARG_sJ(i);
-#ifdef HELLO_ILP_ENABLE
+#ifdef MASK_ILP_ENABLE
         if (offset <= 0) {
           sequentialJumps++;
         }
         else sequentialJumps = 0;
-        if (sequentialJumps >= HELLO_ILP_MAX_ITERATIONS) {
+        if (sequentialJumps >= MASK_ILP_MAX_ITERATIONS) {
           sequentialJumps = 0;
-#ifndef HELLO_ILP_SILENT_BREAK
-          helloG_runerror(L, "infinite loop detected (exceeded max iterations: %d)", HELLO_ILP_MAX_ITERATIONS);
+#ifndef MASK_ILP_SILENT_BREAK
+          maskG_runerror(L, "infinite loop detected (exceeded max iterations: %d)", MASK_ILP_MAX_ITERATIONS);
 #endif
           vmbreak;
         }
-#endif // HELLO_ILP_ENABLE
+#endif // MASK_ILP_ENABLE
         pc += offset;
         updatetrap(ci);
         vmDumpInit();
@@ -2026,7 +2026,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       vmcase(OP_EQ) {
         int cond;
         TValue *rb = vRB(i);
-        Protect(cond = helloV_equalobj(L, s2v(ra), rb));
+        Protect(cond = maskV_equalobj(L, s2v(ra), rb));
         docondjump();
         vmDumpInit();
         vmDumpAddA();
@@ -2056,7 +2056,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       vmcase(OP_EQK) {
         TValue *rb = KB(i);
         /* basic types do not use '__eq'; we can use raw equality */
-        int cond = helloV_rawequalobj(s2v(ra), rb);
+        int cond = maskV_rawequalobj(s2v(ra), rb);
         docondjump();
         vmDumpInit();
         vmDumpAddA();
@@ -2071,7 +2071,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         if (ttisinteger(s2v(ra)))
           cond = (ivalue(s2v(ra)) == im);
         else if (ttisfloat(s2v(ra)))
-          cond = helloi_numeq(fltvalue(s2v(ra)), cast_num(im));
+          cond = maski_numeq(fltvalue(s2v(ra)), cast_num(im));
         else
           cond = 0;  /* other types cannot be equal to a number */
         docondjump();
@@ -2083,7 +2083,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LTI) {
-        op_orderI(L, l_lti, helloi_numlt, 0, TM_LT);
+        op_orderI(L, l_lti, maski_numlt, 0, TM_LT);
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
@@ -2092,7 +2092,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LEI) {
-        op_orderI(L, l_lei, helloi_numle, 0, TM_LE);
+        op_orderI(L, l_lei, maski_numle, 0, TM_LE);
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
@@ -2101,7 +2101,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GTI) {
-        op_orderI(L, l_gti, helloi_numgt, 1, TM_LT);
+        op_orderI(L, l_gti, maski_numgt, 1, TM_LT);
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
@@ -2110,7 +2110,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GEI) {
-        op_orderI(L, l_gei, helloi_numge, 1, TM_LE);
+        op_orderI(L, l_gei, maski_numge, 1, TM_LE);
         vmDumpInit();
         vmDumpAddA();
         vmDumpAdd (GETARG_sB(i));
@@ -2120,20 +2120,20 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       }
       vmcase(OP_TEST) {
         int cond = !l_isfalse(s2v(ra));
-#ifdef HELLO_ILP_ENABLE
+#ifdef MASK_ILP_ENABLE
         int offset = GETARG_sJ(i);
         if (offset <= 0) {
           sequentialJumps++;
         }
         else sequentialJumps = 0;
-        if (sequentialJumps >= HELLO_ILP_MAX_ITERATIONS) {
+        if (sequentialJumps >= MASK_ILP_MAX_ITERATIONS) {
           sequentialJumps = 0;
-#ifndef HELLO_ILP_SILENT_BREAK
-          helloG_runerror(L, "infinite loop detected (exceeded max iterations: %d)", HELLO_ILP_MAX_ITERATIONS);
+#ifndef MASK_ILP_SILENT_BREAK
+          maskG_runerror(L, "infinite loop detected (exceeded max iterations: %d)", MASK_ILP_MAX_ITERATIONS);
 #endif
           vmbreak;
         }
-#endif // HELLO_ILP_ENABLE
+#endif // MASK_ILP_ENABLE
         docondjump();
         vmDumpInit();
         vmDumpAddA();
@@ -2186,15 +2186,15 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddA();
         vmDumpAddB();
         vmDumpAddC();
-#ifdef HELLO_ILP_HOOK_FUNCTION
-        if (fvalue(s2v(ra)) == HELLO_ILP_HOOK_FUNCTION) sequentialJumps = 0;
+#ifdef MASK_ILP_HOOK_FUNCTION
+        if (fvalue(s2v(ra)) == MASK_ILP_HOOK_FUNCTION) sequentialJumps = 0;
 #endif
-        if ((newci = helloD_precall(L, ra, nresults)) == NULL)  /* C call; nothing else to be done */
+        if ((newci = maskD_precall(L, ra, nresults)) == NULL)  /* C call; nothing else to be done */
         {
           updatetrap(ci);
           vmDumpOut("; call cfunc (nresults=" << nresults << " nparams=" << nresults << ")");
         }
-        else  /* Hello call: run function in this same C frame */
+        else  /* Mask call: run function in this same C frame */
         {
           vmDumpOut("; call lfunc (nresults=" << nresults << " nparams=" << nresults << ")");
           ci = newci;
@@ -2218,11 +2218,11 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmDumpAddB();
         vmDumpAddC();
         if (TESTARG_k(i)) {
-          helloF_closeupval(L, base);  /* close upvalues from current call */
-          hello_assert(L->tbclist < base);  /* no pending tbc variables */
-          hello_assert(base == ci->func + 1);
+          maskF_closeupval(L, base);  /* close upvalues from current call */
+          mask_assert(L->tbclist < base);  /* no pending tbc variables */
+          mask_assert(base == ci->func + 1);
         }
-        if ((n = helloD_pretailcall(L, ci, ra, b, delta)) < 0)
+        if ((n = maskD_pretailcall(L, ci, ra, b, delta)) < 0)
         {
           vmDumpOut("; tailcall lfunc (nresults=" << n << " nparams=" << b - 1 << ")");
           goto startfunc;  /* execute the callee */
@@ -2231,8 +2231,8 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         {
           vmDumpOut("; tailcall cfunc (nresults=" << n << " nparams=" << b - 1 << ")");
           ci->func -= delta;  /* restore 'func' (if vararg) */
-          helloD_poscall(L, ci, n);  /* finish caller */
-          updatetrap(ci);  /* 'helloD_poscall' can change hooks */
+          maskD_poscall(L, ci, n);  /* finish caller */
+          updatetrap(ci);  /* 'maskD_poscall' can change hooks */
           goto ret;  /* caller returns after the tail call */
         }
       }
@@ -2246,15 +2246,15 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
           ci->u2.nres = n;  /* save number of returns */
           if (L->top < ci->top)
             L->top = ci->top;
-          helloF_close(L, base, CLOSEKTOP, 1);
+          maskF_close(L, base, CLOSEKTOP, 1);
           updatetrap(ci);
           updatestack(ci);
         }
         if (nparams1)  /* vararg function? */
           ci->func -= ci->u.l.nextraargs + nparams1;
-        L->top = ra + n;  /* set call for 'helloD_poscall' */
-        helloD_poscall(L, ci, n);
-        updatetrap(ci);  /* 'helloD_poscall' can change hooks */
+        L->top = ra + n;  /* set call for 'maskD_poscall' */
+        maskD_poscall(L, ci, n);
+        updatetrap(ci);  /* 'maskD_poscall' can change hooks */
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddB();
@@ -2266,7 +2266,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         if (l_unlikely(L->hookmask)) {
           L->top = ra;
           savepc(ci);
-          helloD_poscall(L, ci, 0);  /* no hurry... */
+          maskD_poscall(L, ci, 0);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
@@ -2284,7 +2284,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         goto ret;
       }
       vmcase(OP_RETURN1) {
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
         if (true)  /* Jump to label 'ret' crosses initalization with vmDumpInit. */
         {
           vmDumpInit();
@@ -2297,7 +2297,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         if (l_unlikely(L->hookmask)) {
           L->top = ra + 1;
           savepc(ci);
-          helloD_poscall(L, ci, 1);  /* no hurry... */
+          maskD_poscall(L, ci, 1);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
@@ -2312,7 +2312,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
               setnilvalue(s2v(L->top++));  /* complete missing results */
           }
         }
-       ret:  /* return from a Hello function */
+       ret:  /* return from a Mask function */
         if (ci->callstatus & CIST_FRESH)
           return;  /* end this frame */
         else {
@@ -2322,10 +2322,10 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       }
       vmcase(OP_FORLOOP) {
         if (ttisinteger(s2v(ra + 2))) {  /* integer loop? */
-          hello_Unsigned count = l_castS2U(ivalue(s2v(ra + 1)));
+          mask_Unsigned count = l_castS2U(ivalue(s2v(ra + 1)));
           if (count > 0) {  /* still more iterations? */
-            hello_Integer step = ivalue(s2v(ra + 2));
-            hello_Integer idx = ivalue(s2v(ra));  /* internal index */
+            mask_Integer step = ivalue(s2v(ra + 2));
+            mask_Integer idx = ivalue(s2v(ra));  /* internal index */
             chgivalue(s2v(ra + 1), count - 1);  /* update counter */
             idx = intop(+, idx, step);  /* add step to index */
             chgivalue(s2v(ra), idx);  /* update internal index */
@@ -2352,7 +2352,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
           pc += GETARG_Bx(i) + 1;  /* skip the loop */
           vmDumpOut("; this loop is skipped");
         }
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
         else
         {
           vmDumpOut("; prepare loop");
@@ -2369,33 +2369,33 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         i = *callpc;
         if ((!ttisfunction(s2v(ra)))) {
           setobjs2s(L, ra + 1, ra);
-          setfvalue(s2v(ra), helloB_next);
+          setfvalue(s2v(ra), maskB_next);
         }
-        if (ttypetag(s2v(ra)) == HELLO_VLCF
+        if (ttypetag(s2v(ra)) == MASK_VLCF
               && ttistable(s2v(ra+1))
               && ttisnil(s2v(ra+3))
               && !trap
               && (GETARG_C(i) == 1 || GETARG_C(i) == 2)
         ) {
-          if (fvalue(s2v(ra)) == helloB_next && ttisnil(s2v(ra + 2))) {
-            settt_(s2v(ra + 3), HELLO_VITER);
+          if (fvalue(s2v(ra)) == maskB_next && ttisnil(s2v(ra + 2))) {
+            settt_(s2v(ra + 3), MASK_VITER);
             val_(s2v(ra + 3)).it = 0;
-          } else if (fvalue(s2v(ra)) == helloB_ipairsaux && ttisinteger(s2v(ra + 2))) {
-            settt_(s2v(ra + 3), HELLO_VITERI);
+          } else if (fvalue(s2v(ra)) == maskB_ipairsaux && ttisinteger(s2v(ra + 2))) {
+            settt_(s2v(ra + 3), MASK_VITERI);
           } else {
             /* create to-be-closed upvalue (if needed) */
-            halfProtect(helloF_newtbcupval(L, ra + 3));
+            halfProtect(maskF_newtbcupval(L, ra + 3));
           }
         } else {
           /* create to-be-closed upvalue (if needed) */
-          halfProtect(helloF_newtbcupval(L, ra + 3));
+          halfProtect(maskF_newtbcupval(L, ra + 3));
         }
         pc = callpc + 1;
-        hello_assert(GET_OPCODE(i) == OP_TFORCALL && ra == RA(i));
+        mask_assert(GET_OPCODE(i) == OP_TFORCALL && ra == RA(i));
         goto l_tforcall;
       }
       vmcase(OP_TFORCALL) {
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
         if (true)
         {
           vmDumpInit();
@@ -2410,17 +2410,17 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
            to-be-closed variable. The call will use the stack after
            these values (starting at 'ra + 4')
         */
-        if (helloi_likely(ttypetag(s2v(ra + 3)) == HELLO_VITER)) {
-          if (helloi_likely(!trap)) {
+        if (maski_likely(ttypetag(s2v(ra + 3)) == MASK_VITER)) {
+          if (maski_likely(!trap)) {
             Table *t = hvalue(s2v(ra + 1));
             unsigned int idx = val_(s2v(ra + 3)).it;
-            unsigned int asize = helloH_realasize(t);
+            unsigned int asize = maskH_realasize(t);
 
             i = *(pc++);  /* go to next instruction */
-            hello_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
+            mask_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
 
             for (; idx < asize; idx++) {  /* try first array part */
-              if (helloi_likely(!isempty(&t->array[idx]))) {  /* a non-empty entry? */
+              if (maski_likely(!isempty(&t->array[idx]))) {  /* a non-empty entry? */
                 setivalue(s2v(ra + 4), idx + 1);
                 setobj2s(L, ra + 5, &t->array[idx]);
                 goto l_tforcall_found;
@@ -2428,7 +2428,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
             }
             for (idx -= asize; cast_int(idx) < sizenode(t); idx++) {  /* hash part */
               Node *n = gnode(t, idx);
-              if (helloi_likely(!isempty(gval(n)))) {  /* a non-empty entry? */
+              if (maski_likely(!isempty(gval(n)))) {  /* a non-empty entry? */
                 getnodekey(L, s2v(ra + 4), n);
                 setobj2s(L, ra + 5, gval(n));
                 idx += asize;
@@ -2443,19 +2443,19 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
             vmbreak;
           }
           setnilvalue(s2v(ra + 3));
-        } else if (helloi_likely(ttypetag(s2v(ra + 3)) == HELLO_VITERI)) {
-          if (helloi_likely(!trap)) {
-            /* No check for type as HELLO_VITERI is removed in case of debug setlocal. */
+        } else if (maski_likely(ttypetag(s2v(ra + 3)) == MASK_VITERI)) {
+          if (maski_likely(!trap)) {
+            /* No check for type as MASK_VITERI is removed in case of debug setlocal. */
             Table *t = hvalue(s2v(ra + 1));
-            hello_Integer n = ivalue(s2v(ra + 2));
+            mask_Integer n = ivalue(s2v(ra + 2));
             const TValue *slot;
             n = intop(+, n, 1);
-            slot = helloi_likely(l_castS2U(n) - 1 < t->alimit) ? &t->array[n - 1] : helloH_getint(t, n);
-            if (helloi_likely(!isempty(slot))) {
+            slot = maski_likely(l_castS2U(n) - 1 < t->alimit) ? &t->array[n - 1] : maskH_getint(t, n);
+            if (maski_likely(!isempty(slot))) {
               setobj2s(L, ra + 5, slot);
               chgivalue(s2v(ra + 2), n);
               i = *(pc++);  /* go to next instruction */
-              hello_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
+              mask_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
               setobjs2s(L, ra + 4, ra + 2);  /* save control variable */
               pc -= GETARG_Bx(i);  /* jump back */
               vmbreak;
@@ -2467,14 +2467,14 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         /* push function, state, and control variable */
         memcpy(ra + 4, ra, 3 * sizeof(*ra));
         L->top = ra + 4 + 3;
-        ProtectNT(helloD_call(L, ra + 4, GETARG_C(i)));  /* do the call */
+        ProtectNT(maskD_call(L, ra + 4, GETARG_C(i)));  /* do the call */
         updatestack(ci);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
-        hello_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
+        mask_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
         goto l_tforloop;
       }
       vmcase(OP_TFORLOOP) {
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
         if (true)
         {
           vmDumpInit();
@@ -2503,19 +2503,19 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
           last += GETARG_Ax(*pc) * (MAXARG_C + 1);
           pc++;
         }
-        if (last > helloH_realasize(h))  /* needs more space? */
-          helloH_resizearray(L, h, last);  /* preallocate it at once */
-#ifdef HELLO_VMDUMP
+        if (last > maskH_realasize(h))  /* needs more space? */
+          maskH_resizearray(L, h, last);  /* preallocate it at once */
+#ifdef MASK_VMDUMP
         std::string rep;
 #endif
         for (; n > 0; n--) {
           TValue *val = s2v(ra + n);
           setobj2t(L, &h->array[last - 1], val);
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
           rep.insert(0, stringify_tvalue(val) + "; ");
 #endif
           last--;
-          helloC_barrierback(L, obj2gco(h), val);
+          maskC_barrierback(L, obj2gco(h), val);
         }
         vmDumpInit();
         vmDumpAddA();
@@ -2536,7 +2536,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       }
       vmcase(OP_VARARG) {
         int n = GETARG_C(i) - 1;  /* required results */
-        Protect(helloT_getvarargs(L, ci, ra, n));
+        Protect(maskT_getvarargs(L, ci, ra, n));
         vmDumpInit();
         vmDumpAddA();
         vmDumpAddC();
@@ -2544,9 +2544,9 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_VARARGPREP) {
-        ProtectNT(helloT_adjustvarargs(L, GETARG_A(i), ci, cl->p));
+        ProtectNT(maskT_adjustvarargs(L, GETARG_A(i), ci, cl->p));
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
-          helloD_hookcall(L, ci);
+          maskD_hookcall(L, ci);
           L->oldpc = 1;  /* next opcode will be seen as a "new" line */
         }
         updatebase(ci);  /* function has new base after adjustment */
@@ -2556,7 +2556,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_EXTRAARG) {
-        hello_assert(0);
+        mask_assert(0);
         vmDumpInit();
         vmDumpAddA();
         vmDumpOut (";");
@@ -2565,7 +2565,7 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
       vmcase(OP_IN) {
         TValue *a = s2v(RA(i));
         TValue *b = vRB(i);
-#ifdef HELLO_VMDUMP
+#ifdef MASK_VMDUMP
         std::string old = stringify_tvalue(a);  /* RA will be changed below. */
 #endif
         if (ttisstring(a) && ttisstring(b)) {
@@ -2576,14 +2576,14 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         } else {
           /* fetch table key */
           const TValue* slot;
-          hello_Integer n;
+          mask_Integer n;
           if (ttisinteger(a)
-              ? (cast_void(n = ivalue(a)), helloV_fastgeti(L, b, n, slot))
-              : helloV_fastget(L, b, a, slot, helloH_get)) {
+              ? (cast_void(n = ivalue(a)), maskV_fastgeti(L, b, n, slot))
+              : maskV_fastget(L, b, a, slot, maskH_get)) {
             setobj2s(L, ra, slot);
           }
           else
-            Protect(helloV_finishget(L, b, a, ra, slot));
+            Protect(maskV_finishget(L, b, a, ra, slot));
           /* check if nil */
           if (ttisnil(s2v(ra)))
             setbfvalue(s2v(ra));
@@ -2601,9 +2601,9 @@ void helloV_execute (hello_State *L, CallInfo *ci) {
         vmbreak;
       }
     }
-#ifdef HELLO_ETL_ENABLE
+#ifdef MASK_ETL_ENABLE
     if (deadline < std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) {
-      HELLO_ETL_TIMESUP
+      MASK_ETL_TIMESUP
       return;
     }
 #endif

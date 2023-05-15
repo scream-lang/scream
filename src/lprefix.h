@@ -1,14 +1,14 @@
 #pragma once
 /*
 ** $Id: lprefix.h $
-** Definitions for Hello code that must come before any other header file
-** See Copyright Notice in hello.h
+** Definitions for Mask code that must come before any other header file
+** See Copyright Notice in mask.h
 */
 
 /*
 ** Allows POSIX/XSI stuff
 */
-#if !defined(HELLO_USE_C89)	/* { */
+#if !defined(MASK_USE_C89)	/* { */
 
 #if !defined(_XOPEN_SOURCE)
 #define _XOPEN_SOURCE           600
@@ -19,7 +19,7 @@
 /*
 ** Allows manipulation of large files in gcc and some other compilers
 */
-#if !defined(HELLO_32BITS) && !defined(_FILE_OFFSET_BITS)
+#if !defined(MASK_32BITS) && !defined(_FILE_OFFSET_BITS)
 #define _LARGEFILE_SOURCE       1
 #define _FILE_OFFSET_BITS       64
 #endif

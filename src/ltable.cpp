@@ -1,11 +1,11 @@
 /*
 ** $Id: ltable.c $
-** Hello tables (hash)
-** See Copyright Notice in hello.h
+** Mask tables (hash)
+** See Copyright Notice in mask.h
 */
 
 #define ltable_c
-#define HELLO_CORE
+#define MASK_CORE
 
 #include "lprefix.h"
 
@@ -26,7 +26,7 @@
 #include <math.h>
 #include <limits.h>
 
-#include "hello.h"
+#include "mask.h"
 
 #include "ldebug.h"
 #include "ldo.h"
@@ -51,7 +51,7 @@
 ** between 2^MAXABITS and the maximum size that, measured in bytes,
 ** fits in a 'size_t'.
 */
-#define MAXASIZE	helloM_limitN(1u << MAXABITS, TValue)
+#define MAXASIZE	maskM_limitN(1u << MAXABITS, TValue)
 
 /*
 ** MAXHBITS is the largest integer such that 2^MAXHBITS fits in a
@@ -65,7 +65,7 @@
 ** between 2^MAXHBITS and the maximum size such that, measured in bytes,
 ** it fits in a 'size_t'.
 */
-#define MAXHSIZE	helloM_limitN(1u << MAXHBITS, Node)
+#define MAXHSIZE	maskM_limitN(1u << MAXHBITS, Node)
 
 
 /*
@@ -91,8 +91,8 @@
 #define dummynode		(&dummynode_)
 
 static const Node dummynode_ = {
-  {{NULL}, HELLO_VEMPTY,  /* value's value and type */
-   HELLO_VNIL, 0, {NULL}}  /* key type, next, and key value */
+  {{NULL}, MASK_VEMPTY,  /* value's value and type */
+   MASK_VNIL, 0, {NULL}}  /* key type, next, and key value */
 };
 
 
@@ -105,8 +105,8 @@ static const TValue absentkey = {ABSTKEYCONSTANT};
 ** remainder, which is faster. Otherwise, use an unsigned-integer
 ** remainder, which uses all bits and ensures a non-negative result.
 */
-static Node *hashint (const Table *t, hello_Integer i) {
-  hello_Unsigned ui = l_castS2U(i);
+static Node *hashint (const Table *t, mask_Integer i) {
+  mask_Unsigned ui = l_castS2U(i);
   if (ui <= cast_uint(INT_MAX))
     return hashmod(t, cast_int(ui));
   else
@@ -128,12 +128,12 @@ static Node *hashint (const Table *t, hello_Integer i) {
 ** INT_MIN.
 */
 #if !defined(l_hashfloat)
-static int l_hashfloat (hello_Number n) {
+static int l_hashfloat (mask_Number n) {
   int i;
-  hello_Integer ni;
+  mask_Integer ni;
   n = l_mathop(frexp)(n, &i) * -cast_num(INT_MIN);
-  if (!hello_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
-    hello_assert(helloi_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
+  if (!mask_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
+    mask_assert(maski_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
     return 0;
   }
   else {  /* normal case */
@@ -150,32 +150,32 @@ static int l_hashfloat (hello_Number n) {
 */
 static Node *mainpositionTV (const Table *t, const TValue *key) {
   switch (ttypetag(key)) {
-    case HELLO_VNUMINT: {
-      hello_Integer i = ivalue(key);
+    case MASK_VNUMINT: {
+      mask_Integer i = ivalue(key);
       return hashint(t, i);
     }
-    case HELLO_VNUMFLT: {
-      hello_Number n = fltvalue(key);
+    case MASK_VNUMFLT: {
+      mask_Number n = fltvalue(key);
       return hashmod(t, l_hashfloat(n));
     }
-    case HELLO_VSHRSTR: {
+    case MASK_VSHRSTR: {
       TString *ts = tsvalue(key);
       return hashstr(t, ts);
     }
-    case HELLO_VLNGSTR: {
+    case MASK_VLNGSTR: {
       TString *ts = tsvalue(key);
-      return hashpow2(t, helloS_hashlongstr(ts));
+      return hashpow2(t, maskS_hashlongstr(ts));
     }
-    case HELLO_VFALSE:
+    case MASK_VFALSE:
       return hashboolean(t, 0);
-    case HELLO_VTRUE:
+    case MASK_VTRUE:
       return hashboolean(t, 1);
-    case HELLO_VLIGHTUSERDATA: {
+    case MASK_VLIGHTUSERDATA: {
       void *p = pvalue(key);
       return hashpointer(t, p);
     }
-    case HELLO_VLCF: {
-      hello_CFunction f = fvalue(key);
+    case MASK_VLCF: {
+      mask_CFunction f = fvalue(key);
       return hashpointer(t, f);
     }
     default: {
@@ -188,7 +188,7 @@ static Node *mainpositionTV (const Table *t, const TValue *key) {
 
 l_sinline Node *mainpositionfromnode (const Table *t, Node *nd) {
   TValue key;
-  getnodekey(cast(hello_State *, NULL), &key, nd);
+  getnodekey(cast(mask_State *, NULL), &key, nd);
   return mainpositionTV(t, &key);
 }
 
@@ -218,18 +218,18 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
        !(deadok && keyisdead(n2) && iscollectable(k1)))
    return 0;  /* cannot be same key */
   switch (keytt(n2)) {
-    case HELLO_VNIL: case HELLO_VFALSE: case HELLO_VTRUE:
+    case MASK_VNIL: case MASK_VFALSE: case MASK_VTRUE:
       return 1;
-    case HELLO_VNUMINT:
+    case MASK_VNUMINT:
       return (ivalue(k1) == keyival(n2));
-    case HELLO_VNUMFLT:
-      return helloi_numeq(fltvalue(k1), fltvalueraw(keyval(n2)));
-    case HELLO_VLIGHTUSERDATA:
+    case MASK_VNUMFLT:
+      return maski_numeq(fltvalue(k1), fltvalueraw(keyval(n2)));
+    case MASK_VLIGHTUSERDATA:
       return pvalue(k1) == pvalueraw(keyval(n2));
-    case HELLO_VLCF:
+    case MASK_VLCF:
       return fvalue(k1) == fvalueraw(keyval(n2));
-    case ctb(HELLO_VLNGSTR):
-      return helloS_eqlngstr(tsvalue(k1), keystrval(n2));
+    case ctb(MASK_VLNGSTR):
+      return maskS_eqlngstr(tsvalue(k1), keystrval(n2));
     default:
       return gcvalue(k1) == gcvalueraw(keyval(n2));
   }
@@ -241,13 +241,13 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
 ** part of table 't'. (Otherwise, the array part must be larger than
 ** 'alimit'.)
 */
-#define limitequalsasize(t)	(isrealasize(t) || helloispow2((t)->alimit))
+#define limitequalsasize(t)	(isrealasize(t) || maskispow2((t)->alimit))
 
 
 /*
 ** Returns the real size of the 'array' array
 */
-HELLOI_FUNC unsigned int helloH_realasize (const Table *t) {
+MASKI_FUNC unsigned int maskH_realasize (const Table *t) {
   if (limitequalsasize(t))
     return t->alimit;  /* this is the size */
   else {
@@ -262,7 +262,7 @@ HELLOI_FUNC unsigned int helloH_realasize (const Table *t) {
     size |= (size >> 32);  /* unsigned int has more than 32 bits */
 #endif
     size++;
-    hello_assert(helloispow2(size) && size/2 < t->alimit && t->alimit < size);
+    mask_assert(maskispow2(size) && size/2 < t->alimit && t->alimit < size);
     return size;
   }
 }
@@ -274,12 +274,12 @@ HELLOI_FUNC unsigned int helloH_realasize (const Table *t) {
 ** without changing the real size.)
 */
 static int ispow2realasize (const Table *t) {
-  return (!isrealasize(t) || helloispow2(t->alimit));
+  return (!isrealasize(t) || maskispow2(t->alimit));
 }
 
 
 static unsigned int setlimittosize (Table *t) {
-  t->alimit = helloH_realasize(t);
+  t->alimit = maskH_realasize(t);
   setrealasize(t);
   return t->alimit;
 }
@@ -313,7 +313,7 @@ static const TValue *getgeneric (Table *t, const TValue *key, int deadok) {
 ** returns the index for 'k' if 'k' is an appropriate key to live in
 ** the array part of a table, 0 otherwise.
 */
-static unsigned int arrayindex (hello_Integer k) {
+static unsigned int arrayindex (mask_Integer k) {
   if (l_castS2U(k) - 1u < MAXASIZE)  /* 'k' in [1, MAXASIZE]? */
     return cast_uint(k);  /* 'key' is an appropriate array index */
   else
@@ -326,7 +326,7 @@ static unsigned int arrayindex (hello_Integer k) {
 ** elements in the array part, then elements in the hash part. The
 ** beginning of a traversal is signaled by 0.
 */
-static unsigned int findindex (hello_State *L, Table *t, TValue *key,
+static unsigned int findindex (mask_State *L, Table *t, TValue *key,
                                unsigned int asize) {
   unsigned int i;
   if (ttisnil(key)) return 0;  /* first iteration */
@@ -336,7 +336,7 @@ static unsigned int findindex (hello_State *L, Table *t, TValue *key,
   else {
     const TValue *n = getgeneric(t, key, 1);
     if (l_unlikely(isabstkey(n)))
-      helloG_runerror(L, "invalid key to 'next'");  /* key not found */
+      maskG_runerror(L, "invalid key to 'next'");  /* key not found */
     i = cast_int(nodefromval(n) - gnode(t, 0));  /* key index in hash table */
     /* hash elements are numbered after array ones */
     return (i + 1) + asize;
@@ -344,8 +344,8 @@ static unsigned int findindex (hello_State *L, Table *t, TValue *key,
 }
 
 
-int helloH_next (hello_State *L, Table *t, StkId key) {
-  unsigned int asize = helloH_realasize(t);
+int maskH_next (mask_State *L, Table *t, StkId key) {
+  unsigned int asize = maskH_realasize(t);
   unsigned int i = findindex(L, t, s2v(key), asize);  /* find original key */
   for (; i < asize; i++) {  /* try first array part */
     if (!isempty(&t->array[i])) {  /* a non-empty entry? */
@@ -366,9 +366,9 @@ int helloH_next (hello_State *L, Table *t, StkId key) {
 }
 
 
-static void freehash (hello_State *L, Table *t) {
+static void freehash (mask_State *L, Table *t) {
   if (!isdummy(t))
-    helloM_freearray(L, t->node, cast_sizet(sizenode(t)));
+    maskM_freearray(L, t->node, cast_sizet(sizenode(t)));
 }
 
 
@@ -402,16 +402,16 @@ static unsigned int computesizes (unsigned int nums[], unsigned int *pna) {
       na = a;  /* all elements up to 'optimal' will go to array part */
     }
   }
-  hello_assert((optimal == 0 || optimal / 2 < na) && na <= optimal);
+  mask_assert((optimal == 0 || optimal / 2 < na) && na <= optimal);
   *pna = na;
   return optimal;
 }
 
 
-static int countint (hello_Integer key, unsigned int *nums) {
+static int countint (mask_Integer key, unsigned int *nums) {
   unsigned int k = arrayindex(key);
   if (k != 0) {  /* is 'key' an appropriate array index? */
-    nums[helloO_ceillog2(k)]++;  /* count as such */
+    nums[maskO_ceillog2(k)]++;  /* count as such */
     return 1;
   }
   else
@@ -475,7 +475,7 @@ static int numusehash (const Table *t, unsigned int *nums, unsigned int *pna) {
 ** comparison ensures that the shift in the second one does not
 ** overflow.
 */
-static void setnodevector (hello_State *L, Table *t, unsigned int size) {
+static void setnodevector (mask_State *L, Table *t, unsigned int size) {
   if (size == 0) {  /* no elements to hash part? */
     t->node = cast(Node *, dummynode);  /* use common 'dummynode' */
     t->lsizenode = 0;
@@ -483,11 +483,11 @@ static void setnodevector (hello_State *L, Table *t, unsigned int size) {
   }
   else {
     int i;
-    int lsize = helloO_ceillog2(size);
+    int lsize = maskO_ceillog2(size);
     if (lsize > MAXHBITS || (1u << lsize) > MAXHSIZE)
-      helloG_runerror(L, "table overflow");
+      maskG_runerror(L, "table overflow");
     size = twoto(lsize);
-    t->node = helloM_newvector(L, size, Node);
+    t->node = maskM_newvector(L, size, Node);
     for (i = 0; i < cast_int(size); i++) {
       Node *n = gnode(t, i);
       gnext(n) = 0;
@@ -503,7 +503,7 @@ static void setnodevector (hello_State *L, Table *t, unsigned int size) {
 /*
 ** (Re)insert all elements from the hash part of 'ot' into table 't'.
 */
-static void reinsert (hello_State *L, Table *ot, Table *t) {
+static void reinsert (mask_State *L, Table *ot, Table *t) {
   int j;
   int size = sizenode(ot);
   for (j = 0; j < size; j++) {
@@ -513,7 +513,7 @@ static void reinsert (hello_State *L, Table *ot, Table *t) {
          already present in the table */
       TValue k;
       getnodekey(L, &k, old);
-      helloH_set(L, t, &k, gval(old));
+      maskH_set(L, t, &k, gval(old));
     }
   }
 }
@@ -548,7 +548,7 @@ static void exchangehashpart (Table *t1, Table *t2) {
 ** nils and reinserts the elements of the old hash back into the new
 ** parts of the table.
 */
-void helloH_resize (hello_State *L, Table *t, unsigned int newasize,
+void maskH_resize (mask_State *L, Table *t, unsigned int newasize,
                                           unsigned int nhsize) {
   unsigned int i;
   Table newt;  /* to keep the new hash part */
@@ -562,16 +562,16 @@ void helloH_resize (hello_State *L, Table *t, unsigned int newasize,
     /* re-insert into the new hash the elements from vanishing slice */
     for (i = newasize; i < oldasize; i++) {
       if (!isempty(&t->array[i]))
-        helloH_setint(L, t, i + 1, &t->array[i]);
+        maskH_setint(L, t, i + 1, &t->array[i]);
     }
     t->alimit = oldasize;  /* restore current size... */
     exchangehashpart(t, &newt);  /* and hash (in case of errors) */
   }
   /* allocate new array */
-  newarray = helloM_reallocvector(L, t->array, oldasize, newasize, TValue);
+  newarray = maskM_reallocvector(L, t->array, oldasize, newasize, TValue);
   if (l_unlikely(newarray == NULL && newasize > 0)) {  /* allocation failed? */
     freehash(L, &newt);  /* release new hash part */
-    helloM_error(L);  /* raise error (with array unchanged) */
+    maskM_error(L);  /* raise error (with array unchanged) */
   }
   /* allocation ok; initialize new part of the array */
   exchangehashpart(t, &newt);  /* 't' has the new hash ('newt' has the old) */
@@ -585,15 +585,15 @@ void helloH_resize (hello_State *L, Table *t, unsigned int newasize,
 }
 
 
-void helloH_resizearray (hello_State *L, Table *t, unsigned int nasize) {
+void maskH_resizearray (mask_State *L, Table *t, unsigned int nasize) {
   int nsize = allocsizenode(t);
-  helloH_resize(L, t, nasize, nsize);
+  maskH_resize(L, t, nasize, nsize);
 }
 
 /*
 ** nums[i] = number of keys 'k' where 2^(i - 1) < k <= 2^i
 */
-static void rehash (hello_State *L, Table *t, const TValue *ek) {
+static void rehash (mask_State *L, Table *t, const TValue *ek) {
   unsigned int asize;  /* optimal size for array part */
   unsigned int na;  /* number of keys in the array part */
   unsigned int nums[MAXABITS + 1];
@@ -611,7 +611,7 @@ static void rehash (hello_State *L, Table *t, const TValue *ek) {
   /* compute new size for array part */
   asize = computesizes(nums, &na);
   /* resize the table to new computed sizes */
-  helloH_resize(L, t, asize, totaluse - na);
+  maskH_resize(L, t, asize, totaluse - na);
 }
 
 
@@ -621,8 +621,8 @@ static void rehash (hello_State *L, Table *t, const TValue *ek) {
 */
 
 
-Table *helloH_new (hello_State *L) {
-  GCObject *o = helloC_newobj(L, HELLO_VTABLE, sizeof(Table));
+Table *maskH_new (mask_State *L) {
+  GCObject *o = maskC_newobj(L, MASK_VTABLE, sizeof(Table));
   Table *t = gco2t(o);
   t->metatable = NULL;
   t->flags = cast_byte(maskflags);  /* table has no metamethod fields */
@@ -635,10 +635,10 @@ Table *helloH_new (hello_State *L) {
 }
 
 
-void helloH_free (hello_State *L, Table *t) {
+void maskH_free (mask_State *L, Table *t) {
   freehash(L, t);
-  helloM_freearray(L, t->array, helloH_realasize(t));
-  helloM_free(L, t);
+  maskM_freearray(L, t->array, maskH_realasize(t));
+  maskM_free(L, t);
 }
 
 
@@ -662,20 +662,20 @@ static Node *getfreepos (Table *t) {
 ** put new key in its main position; otherwise (colliding node is in its main
 ** position), new key goes to an empty position.
 */
-void helloH_newkey (hello_State *L, Table *t, const TValue *key, TValue *value) {
+void maskH_newkey (mask_State *L, Table *t, const TValue *key, TValue *value) {
   Node *mp;
   TValue aux;
   if (l_unlikely(ttisnil(key)))
-    helloG_runerror(L, "table index is nil");
+    maskG_runerror(L, "table index is nil");
   else if (ttisfloat(key)) {
-    hello_Number f = fltvalue(key);
-    hello_Integer k;
-    if (helloV_flttointeger(f, &k, F2Ieq)) {  /* does key fit in an integer? */
+    mask_Number f = fltvalue(key);
+    mask_Integer k;
+    if (maskV_flttointeger(f, &k, F2Ieq)) {  /* does key fit in an integer? */
       setivalue(&aux, k);
       key = &aux;  /* insert it as an integer */
     }
-    else if (l_unlikely(helloi_numisnan(f)))
-      helloG_runerror(L, "table index is NaN");
+    else if (l_unlikely(maski_numisnan(f)))
+      maskG_runerror(L, "table index is NaN");
   }
   if (ttisnil(value))
     return;  /* do not insert nil values */
@@ -686,10 +686,10 @@ void helloH_newkey (hello_State *L, Table *t, const TValue *key, TValue *value) 
     if (f == NULL) {  /* cannot find a free place? */
       rehash(L, t, key);  /* grow table */
       /* whatever called 'newkey' takes care of TM cache */
-      helloH_set(L, t, key, value);  /* insert key into grown table */
+      maskH_set(L, t, key, value);  /* insert key into grown table */
       return;
     }
-    hello_assert(!isdummy(t));
+    mask_assert(!isdummy(t));
     othern = mainpositionfromnode(t, mp);
     if (othern != mp) {  /* is colliding node out of its main position? */
       /* yes; move colliding node into free position */
@@ -707,14 +707,14 @@ void helloH_newkey (hello_State *L, Table *t, const TValue *key, TValue *value) 
       /* new node will go into free position */
       if (gnext(mp) != 0)
         gnext(f) = cast_int((mp + gnext(mp)) - f);  /* chain new position */
-      else hello_assert(gnext(f) == 0);
+      else mask_assert(gnext(f) == 0);
       gnext(mp) = cast_int(f - mp);
       mp = f;
     }
   }
   setnodekey(L, mp, key);
-  helloC_barrierback(L, obj2gco(t), key);
-  hello_assert(isempty(gval(mp)));
+  maskC_barrierback(L, obj2gco(t), key);
+  mask_assert(isempty(gval(mp)));
   setobj2t(L, gval(mp), value);
 }
 
@@ -723,16 +723,16 @@ void helloH_newkey (hello_State *L, Table *t, const TValue *key, TValue *value) 
 ** Search function for integers. If integer is inside 'alimit', get it
 ** directly from the array part. Otherwise, if 'alimit' is not equal to
 ** the real size of the array, key still can be in the array part. In
-** this case, try to avoid a call to 'helloH_realasize' when key is just
+** this case, try to avoid a call to 'maskH_realasize' when key is just
 ** one more than the limit (so that it can be incremented without
 ** changing the real size of the array).
 */
-const TValue *helloH_getint (Table *t, hello_Integer key) {
+const TValue *maskH_getint (Table *t, mask_Integer key) {
   if (l_castS2U(key) - 1u < t->alimit)  /* 'key' in [1, t->alimit]? */
     return &t->array[key - 1];
   else if (!limitequalsasize(t) &&  /* key still may be in the array part? */
            (l_castS2U(key) == t->alimit + 1 ||
-            l_castS2U(key) - 1u < helloH_realasize(t))) {
+            l_castS2U(key) - 1u < maskH_realasize(t))) {
     t->alimit = cast_uint(key);  /* probably '#t' is here now */
     return &t->array[key - 1];
   }
@@ -755,9 +755,9 @@ const TValue *helloH_getint (Table *t, hello_Integer key) {
 /*
 ** search function for short strings
 */
-const TValue *helloH_getshortstr (Table *t, TString *key) {
+const TValue *maskH_getshortstr (Table *t, TString *key) {
   Node *n = hashstr(t, key);
-  hello_assert(key->tt == HELLO_VSHRSTR);
+  mask_assert(key->tt == MASK_VSHRSTR);
   for (;;) {  /* check whether 'key' is somewhere in the chain */
     if (keyisshrstr(n) && eqshrstr(keystrval(n), key))
       return gval(n);  /* that's it */
@@ -771,12 +771,12 @@ const TValue *helloH_getshortstr (Table *t, TString *key) {
 }
 
 
-const TValue *helloH_getstr (Table *t, TString *key) {
-  if (key->tt == HELLO_VSHRSTR)
-    return helloH_getshortstr(t, key);
+const TValue *maskH_getstr (Table *t, TString *key) {
+  if (key->tt == MASK_VSHRSTR)
+    return maskH_getshortstr(t, key);
   else {  /* for long strings, use generic case */
     TValue ko;
-    setsvalue(cast(hello_State *, NULL), &ko, key);
+    setsvalue(cast(mask_State *, NULL), &ko, key);
     return getgeneric(t, &ko, 0);
   }
 }
@@ -785,15 +785,15 @@ const TValue *helloH_getstr (Table *t, TString *key) {
 /*
 ** main search function
 */
-const TValue *helloH_get (Table *t, const TValue *key) {
+const TValue *maskH_get (Table *t, const TValue *key) {
   switch (ttypetag(key)) {
-    case HELLO_VSHRSTR: return helloH_getshortstr(t, tsvalue(key));
-    case HELLO_VNUMINT: return helloH_getint(t, ivalue(key));
-    case HELLO_VNIL: return &absentkey;
-    case HELLO_VNUMFLT: {
-      hello_Integer k;
-      if (helloV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
-        return helloH_getint(t, k);  /* use specialized version */
+    case MASK_VSHRSTR: return maskH_getshortstr(t, tsvalue(key));
+    case MASK_VNUMINT: return maskH_getint(t, ivalue(key));
+    case MASK_VNIL: return &absentkey;
+    case MASK_VNUMFLT: {
+      mask_Integer k;
+      if (maskV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
+        return maskH_getint(t, k);  /* use specialized version */
       /* else... */
     }  /* FALLTHROUGH */
     default:
@@ -808,10 +808,10 @@ const TValue *helloH_get (Table *t, const TValue *key) {
 ** Beware: when using this function you probably need to check a GC
 ** barrier and invalidate the TM cache.
 */
-void helloH_finishset (hello_State *L, Table *t, const TValue *key,
+void maskH_finishset (mask_State *L, Table *t, const TValue *key,
                                    const TValue *slot, TValue *value) {
   if (isabstkey(slot))
-    helloH_newkey(L, t, key, value);
+    maskH_newkey(L, t, key, value);
   else
     setobj2t(L, cast(TValue *, slot), value);
 }
@@ -821,18 +821,18 @@ void helloH_finishset (hello_State *L, Table *t, const TValue *key,
 ** beware: when using this function you probably need to check a GC
 ** barrier and invalidate the TM cache.
 */
-void helloH_set (hello_State *L, Table *t, const TValue *key, TValue *value) {
-  const TValue *slot = helloH_get(t, key);
-  helloH_finishset(L, t, key, slot, value);
+void maskH_set (mask_State *L, Table *t, const TValue *key, TValue *value) {
+  const TValue *slot = maskH_get(t, key);
+  maskH_finishset(L, t, key, slot, value);
 }
 
 
-void helloH_setint (hello_State *L, Table *t, hello_Integer key, TValue *value) {
-  const TValue *p = helloH_getint(t, key);
+void maskH_setint (mask_State *L, Table *t, mask_Integer key, TValue *value) {
+  const TValue *p = maskH_getint(t, key);
   if (isabstkey(p)) {
     TValue k;
     setivalue(&k, key);
-    helloH_newkey(L, t, &k, value);
+    maskH_newkey(L, t, &k, value);
   }
   else
     setobj2t(L, cast(TValue *, p), value);
@@ -845,32 +845,32 @@ void helloH_setint (hello_State *L, Table *t, hello_Integer key, TValue *value) 
 ** present. We want to find a larger key that is absent from the
 ** table, so that we can do a binary search between the two keys to
 ** find a boundary. We keep doubling 'j' until we get an absent index.
-** If the doubling would overflow, we try HELLO_MAXINTEGER. If it is
+** If the doubling would overflow, we try MASK_MAXINTEGER. If it is
 ** absent, we are ready for the binary search. ('j', being max integer,
 ** is larger or equal to 'i', but it cannot be equal because it is
 ** absent while 'i' is present; so 'j > i'.) Otherwise, 'j' is a
 ** boundary. ('j + 1' cannot be a present integer key because it is
-** not a valid integer in Hello.)
+** not a valid integer in Mask.)
 */
-static hello_Unsigned hash_search (Table *t, hello_Unsigned j) {
-  hello_Unsigned i;
+static mask_Unsigned hash_search (Table *t, mask_Unsigned j) {
+  mask_Unsigned i;
   if (j == 0) j++;  /* the caller ensures 'j + 1' is present */
   do {
     i = j;  /* 'i' is a present index */
-    if (j <= l_castS2U(HELLO_MAXINTEGER) / 2)
+    if (j <= l_castS2U(MASK_MAXINTEGER) / 2)
       j *= 2;
     else {
-      j = HELLO_MAXINTEGER;
-      if (isempty(helloH_getint(t, j)))  /* t[j] not present? */
+      j = MASK_MAXINTEGER;
+      if (isempty(maskH_getint(t, j)))  /* t[j] not present? */
         break;  /* 'j' now is an absent index */
       else  /* weird case */
         return j;  /* well, max integer is a boundary... */
     }
-  } while (!isempty(helloH_getint(t, j)));  /* repeat until an absent t[j] */
+  } while (!isempty(maskH_getint(t, j)));  /* repeat until an absent t[j] */
   /* i < j  &&  t[i] present  &&  t[j] absent */
   while (j - i > 1u) {  /* do a binary search between them */
-    hello_Unsigned m = (i + j) / 2;
-    if (isempty(helloH_getint(t, m))) j = m;
+    mask_Unsigned m = (i + j) / 2;
+    if (isempty(maskH_getint(t, m))) j = m;
     else i = m;
   }
   return i;
@@ -892,7 +892,7 @@ static unsigned int binsearch (const TValue *array, unsigned int i,
 ** Try to find a boundary in table 't'. (A 'boundary' is an integer index
 ** such that t[i] is present and t[i+1] is absent, or 0 if t[1] is absent
 ** and 'maxinteger' if t[maxinteger] is present.)
-** (In the next explanation, we use Hello indices, that is, with base 1.
+** (In the next explanation, we use Mask indices, that is, with base 1.
 ** The code itself uses base 0 when indexing the array part of the table.)
 ** The code starts with 'limit = t->alimit', a position in the array
 ** part that may be a boundary.
@@ -920,13 +920,13 @@ static unsigned int binsearch (const TValue *array, unsigned int i,
 ** (In those cases, the boundary is not inside the array part, and
 ** therefore cannot be used as a new limit.)
 */
-hello_Unsigned helloH_getn (Table *t) {
+mask_Unsigned maskH_getn (Table *t) {
   unsigned int limit = t->alimit;
   if (limit > 0 && isempty(&t->array[limit - 1])) {  /* (1)? */
     /* there must be a boundary before 'limit' */
     if (limit >= 2 && !isempty(&t->array[limit - 2])) {
       /* 'limit - 1' is a boundary; can it be a new limit? */
-      if (ispow2realasize(t) && !helloispow2(limit - 1)) {
+      if (ispow2realasize(t) && !maskispow2(limit - 1)) {
         t->alimit = limit - 1;
         setnorealasize(t);  /* now 'alimit' is not the real size */
       }
@@ -935,7 +935,7 @@ hello_Unsigned helloH_getn (Table *t) {
     else {  /* must search for a boundary in [0, limit] */
       unsigned int boundary = binsearch(t->array, 0, limit);
       /* can this boundary represent the real size of the array? */
-      if (ispow2realasize(t) && boundary > helloH_realasize(t) / 2) {
+      if (ispow2realasize(t) && boundary > maskH_realasize(t) / 2) {
         t->alimit = boundary;  /* use it as the new limit */
         setnorealasize(t);
       }
@@ -948,7 +948,7 @@ hello_Unsigned helloH_getn (Table *t) {
     if (isempty(&t->array[limit]))  /* 'limit + 1' is empty? */
       return limit;  /* this is the boundary */
     /* else, try last element in the array */
-    limit = helloH_realasize(t);
+    limit = maskH_realasize(t);
     if (isempty(&t->array[limit - 1])) {  /* empty? */
       /* there must be a boundary in the array after old limit,
          and it must be a valid new limit */
@@ -959,9 +959,9 @@ hello_Unsigned helloH_getn (Table *t) {
     /* else, new limit is present in the table; check the hash part */
   }
   /* (3) 'limit' is the last element and either is zero or present in table */
-  hello_assert(limit == helloH_realasize(t) &&
+  mask_assert(limit == maskH_realasize(t) &&
              (limit == 0 || !isempty(&t->array[limit - 1])));
-  if (isdummy(t) || isempty(helloH_getint(t, cast(hello_Integer, limit + 1))))
+  if (isdummy(t) || isempty(maskH_getint(t, cast(mask_Integer, limit + 1))))
     return limit;  /* 'limit + 1' is absent */
   else  /* 'limit + 1' is also present */
     return hash_search(t, limit);
@@ -969,11 +969,11 @@ hello_Unsigned helloH_getn (Table *t) {
 
 
 
-#if defined(HELLO_DEBUG)
+#if defined(MASK_DEBUG)
 
 /* export these functions for the test library */
 
-Node *helloH_mainposition (const Table *t, const TValue *key) {
+Node *maskH_mainposition (const Table *t, const TValue *key) {
   return mainpositionTV(t, key);
 }
 
