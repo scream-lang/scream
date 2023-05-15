@@ -1,4 +1,4 @@
-local common = require 'hello.common'
+local common = require 'mask.common'
 local fs = {}
 
 function fs.chdir()

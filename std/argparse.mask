@@ -2055,7 +2055,7 @@ function Parser:error(msg)
    os.exit(1)
 end
 
--- Compatibility with strict.hello and other checkers:
+-- Compatibility with strict.mask and other checkers:
 local default_cmdline = rawget(_G, "arg") or {}
 
 function Parser:_parse(args, error_handler)
