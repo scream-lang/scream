@@ -1,4 +1,6 @@
-local utils = require 'boot.common.utils'
+package.path = "../common/utils.lua;" .. package.path
+
+local utils = require("utils")
 
 local ast = {}
 
