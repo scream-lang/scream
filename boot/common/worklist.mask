@@ -1,6 +1,10 @@
 -- construct the least fixed point of a transfer on some graph
-local graph = require "boot.common.graph"
-local utils = require "boot.common.utils"
+package.path = "./graph.mask;
+                ./utils.mask;" .. package.path
+
+local graph = require("graph")
+local utils = require("utils")
+
 local worklist = {}
 
 function worklist.transfer(self, node, input, graph, pred)
