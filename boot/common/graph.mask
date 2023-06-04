@@ -2,7 +2,8 @@
 -- For now, let's just go with tagged nodes and edges, with some helper functions for 
 -- forward and reverse traversal
 
-local utils = require 'boot.common.utils'
+package.path = "./utils.mask;" .. package.path
+local utils = require("utils")
 
 local graph = {}
 graph.__index = graph
