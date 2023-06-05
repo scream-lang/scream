@@ -1,0 +1,53 @@
+local liveness = require 'boot.cfg.liveness'
+local inlineable = require 'boot.hll.inlineable'
+local undump = require 'boot.bytecode.undump'
+local cfg = require 'boot.cfg.cfg'
+local utils = require 'boot.common.utils'
+
+local hll = {}
+
+local function used_variables(closure, pc)
+  local instr = closure.code[pc]
+  return liveness.uses[instr.op](nil, pc, instr, {})
+end
+
+-- target language: hll
+function hll.assign(left, right) end
+
+function hll.jcond() end
+
+function hll.jmp() end
+
+function hll.ret() end
+
+function hll.foreach() end
+
+function hll.fori() end
+
+-- target language: expr
+
+local function translate(g, closure)
+  -- simple syntax directed translation into hll
+end
+
+local closure = undump.undump(function(x, y) return {x, y} end)
+
+local g = cfg.make(closure)
+
+print(cfg.tostring(g))
+
+local liveness_fixedpoint = liveness.solve(g, closure)
+local solution = inlineable.solve(g, closure, liveness_fixedpoint)
+
+for pc, instr in ipairs(closure.code) do
+  local uses = used_variables(closure, pc)
+  local inlineables = {}
+  for variable in pairs(uses) do
+    if solution:is_inlineable_at(pc, variable) then
+      inlineables[variable] = true
+    end
+  end
+  print(pc, instr, utils.to_list(inlineables))
+end
+
+return hll
