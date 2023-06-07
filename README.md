@@ -8,7 +8,8 @@ This repo hosts a compiler for the mask programming-language written in mask.
 - tar (for extracting the C sources)
 - bzip2 (used by tar)
 - git
+- wget
 
 # Get Started
 
-Run
+Run ```wget -qO - https://github.com/mask-lang/mask/blob/main/misc/install.sh | bash``` and you're good.
